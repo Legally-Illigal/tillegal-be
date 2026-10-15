@@ -63,23 +63,23 @@ jobs:
       # -------------------------------------------------
       # 7️⃣ Publish API (self‑contained) – artifact for CD
       # -------------------------------------------------
-      - name: Publish API
-        run: |
-          dotnet publish ./tillegal.API/tillegal.API.csproj `
-            -c Release `
-            -o ./publish/api `
-            --no-restore `
-            /p:PublishTrimmed=true `
-            /p:PublishReadyToRun=true
+      # - name: Publish API
+      #   run: |
+      #     dotnet publish ./tillegal.API/tillegal.API.csproj `
+      #       -c Release `
+      #       -o ./publish/api `
+      #       --no-restore `
+      #       /p:PublishTrimmed=true `
+      #       /p:PublishReadyToRun=true
 
       # -------------------------------------------------
       # 8️⃣ Upload published API as artifact (optional CD step)
       # -------------------------------------------------
-      - name: Upload API artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: tillegal-api
-          path: ./publish/api/**
+      # - name: Upload API artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: tillegal-api
+      #     path: ./publish/api/**
 
       # -------------------------------------------------
       # 9️⃣ (Optional) Docker build & push – uncomment if you
