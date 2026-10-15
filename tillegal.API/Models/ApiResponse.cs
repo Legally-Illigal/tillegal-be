@@ -21,7 +21,7 @@ namespace Tillegal.API.Models
         {
             StatusCode = statusCode,
             IsSuccess = true,
-            Result = result
+            Result = result,
         };
 
         public static ApiResponse Fail(HttpStatusCode statusCode, params string[] errorMessages) => new()
@@ -29,7 +29,7 @@ namespace Tillegal.API.Models
             StatusCode = statusCode,
             IsSuccess = false,
             ErrorMessages = new List<string>(errorMessages),
-            Result = null
+            Result = null,
         };
     }
 }

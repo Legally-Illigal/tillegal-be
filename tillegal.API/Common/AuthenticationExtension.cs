@@ -1,9 +1,11 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using Microsoft.Extensions.Options;
 using System.Net;
 using System.Security.Claims;
 using System.Text;
+
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
+
 using Tillegal.API.Models;
 using Tillegal.Infrastructure.Authentication;
 
@@ -15,7 +17,7 @@ public static class AuthenticationExtension
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var jwtOptions = configuration
+        JwtOptions jwtOptions = configuration
             .GetSection("Jwt")
             .Get<JwtOptions>()
             ?? throw new InvalidOperationException(
@@ -59,7 +61,7 @@ public static class AuthenticationExtension
                     IssuerSigningKey = new SymmetricSecurityKey(
                         Encoding.UTF8.GetBytes(jwtOptions.Key)),
 
-                    RoleClaimType = ClaimTypes.Role
+                    RoleClaimType = ClaimTypes.Role,
                 };
 
                 options.Events = new JwtBearerEvents
@@ -89,7 +91,7 @@ public static class AuthenticationExtension
                             HttpStatusCode.Unauthorized,
                             new[]
                             {
-                                "Bạn chưa đăng nhập hoặc token không hợp lệ."
+                                "Bạn chưa đăng nhập hoặc token không hợp lệ.",
                             });
 
                         await context.Response.WriteAsJsonAsync(
@@ -106,12 +108,12 @@ public static class AuthenticationExtension
                             HttpStatusCode.Forbidden,
                             new[]
                             {
-                                "Bạn không có quyền truy cập chức năng này."
+                                "Bạn không có quyền truy cập chức năng này.",
                             });
 
                         await context.Response.WriteAsJsonAsync(
                             response);
-                    }
+                    },
                 };
             });
 

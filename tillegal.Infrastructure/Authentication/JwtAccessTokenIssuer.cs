@@ -1,8 +1,10 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+
 using Tillegal.Application.Authentication;
 using Tillegal.Infrastructure.Authentication;
 
@@ -14,8 +16,8 @@ public sealed class JwtAccessTokenIssuer(IOptions<JwtOptions> options) : IAccess
 
     public AccessTokenResult Issue(UserAccount user)
     {
-        var now = DateTimeOffset.UtcNow;
-        var expiresAt = now.AddMinutes(_options.AccessTokenMinutes);
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        DateTimeOffset expiresAt = now.AddMinutes(_options.AccessTokenMinutes);
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, user.Id),

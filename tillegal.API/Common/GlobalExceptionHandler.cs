@@ -1,8 +1,12 @@
 using System.Net;
+
 using FluentValidation;
+
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
+
 using Npgsql;
+
 using Tillegal.API.Models;
 using Tillegal.Domain.Exceptions;
 
@@ -23,15 +27,14 @@ namespace Tillegal.API.Common
             Exception exception,
             CancellationToken cancellationToken)
         {
-            var (statusCode, messages) = exception switch
+            (HttpStatusCode statusCode, string[]? messages) = exception switch
             {
                 ValidationException validationException =>
                 (
                     HttpStatusCode.BadRequest,
                     validationException.Errors
                         .Select(error => error.ErrorMessage)
-                        .ToArray()
-                ),
+                        .ToArray()),
 
                 NotFoundException =>
                     (HttpStatusCode.NotFound,
@@ -54,7 +57,7 @@ namespace Tillegal.API.Common
                     (HttpStatusCode.Conflict,
                     new[]
                     {
-                        "Dữ liệu bị trùng lặp trong hệ thống."
+                        "Dữ liệu bị trùng lặp trong hệ thống.",
                     }),
 
                 DbUpdateException { InnerException: PostgresException postgresException }
@@ -62,15 +65,15 @@ namespace Tillegal.API.Common
                     (HttpStatusCode.Conflict,
                     new[]
                     {
-                        "Dữ liệu bị trùng lặp trong hệ thống."
+                        "Dữ liệu bị trùng lặp trong hệ thống.",
                     }),
 
                 _ =>
                     (HttpStatusCode.InternalServerError,
                     new[]
                     {
-                        "An unexpected error occurred."
-                    })
+                        "An unexpected error occurred.",
+                    }),
             };
 
             if (statusCode == HttpStatusCode.InternalServerError)

@@ -1,6 +1,8 @@
-using Tillegal.API.Common;
-using Mapster;
 using System.Reflection;
+
+using Mapster;
+
+using Tillegal.API.Common;
 
 namespace Tillegal.API
 {
@@ -15,7 +17,7 @@ namespace Tillegal.API
 
             services.AddExceptionHandler<GlobalExceptionHandler>();
             services.AddProblemDetails();
-            var config = TypeAdapterConfig.GlobalSettings;
+            TypeAdapterConfig config = TypeAdapterConfig.GlobalSettings;
             config.Scan(Assembly.GetExecutingAssembly());
 
             return services;

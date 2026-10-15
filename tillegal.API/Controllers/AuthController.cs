@@ -2,9 +2,12 @@ using System.ComponentModel.DataAnnotations;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
+
 using Tillegal.API.Common;
 using Tillegal.API.Models;
 using Tillegal.Application.Authentication;
@@ -28,7 +31,7 @@ public sealed class AuthController(
         RegisterRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await authenticationService.RegisterAsync(
+        UserRegistrationResult result = await authenticationService.RegisterAsync(
             request.Email,
             request.Password,
             cancellationToken);
@@ -43,7 +46,7 @@ public sealed class AuthController(
         return StatusCode(StatusCodes.Status201Created, new
         {
             result.User!.Id,
-            result.User.Email
+            result.User.Email,
         });
     }
 
@@ -54,7 +57,7 @@ public sealed class AuthController(
         LoginRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await authenticationService.LoginAsync(
+        AuthSession? result = await authenticationService.LoginAsync(
             request.Email,
             request.Password,
             cancellationToken);
@@ -90,7 +93,7 @@ public sealed class AuthController(
                 "Refresh token is missing or invalid."));
         }
 
-        var session = await authenticationService.RefreshAsync(
+        AuthSession? session = await authenticationService.RefreshAsync(
             refreshToken,
             cancellationToken);
         if (session is null)
@@ -134,8 +137,8 @@ public sealed class AuthController(
             .TrimEnd('=')
             .Replace('+', '-')
             .Replace('/', '_');
-        var sameSite = Enum.Parse<SameSiteMode>(_cookieOptions.SameSite, true);
-        var maxAge = session.RefreshTokenExpiresAt - DateTimeOffset.UtcNow;
+        SameSiteMode sameSite = Enum.Parse<SameSiteMode>(_cookieOptions.SameSite, true);
+        TimeSpan maxAge = session.RefreshTokenExpiresAt - DateTimeOffset.UtcNow;
 
         Response.Cookies.Append(_cookieOptions.Name, session.RefreshToken, new CookieOptions
         {
@@ -145,7 +148,7 @@ public sealed class AuthController(
             Path = "/api/auth",
             Domain = _cookieOptions.Domain,
             IsEssential = true,
-            MaxAge = maxAge
+            MaxAge = maxAge,
         });
 
         Response.Cookies.Append(_cookieOptions.CsrfCookieName, csrfToken, new CookieOptions
@@ -156,7 +159,7 @@ public sealed class AuthController(
             Path = "/api/auth",
             Domain = _cookieOptions.Domain,
             IsEssential = true,
-            MaxAge = maxAge
+            MaxAge = maxAge,
         });
 
         return csrfToken;
@@ -165,7 +168,7 @@ public sealed class AuthController(
     private bool HasValidCsrfToken()
     {
         if (!Request.Cookies.TryGetValue(_cookieOptions.CsrfCookieName, out var cookieToken)
-            || !Request.Headers.TryGetValue(CsrfHeaderName, out var headerValues))
+            || !Request.Headers.TryGetValue(CsrfHeaderName, out StringValues headerValues))
         {
             return false;
         }
@@ -183,14 +186,14 @@ public sealed class AuthController(
 
     private void ClearRefreshCookies()
     {
-        var sameSite = Enum.Parse<SameSiteMode>(_cookieOptions.SameSite, true);
+        SameSiteMode sameSite = Enum.Parse<SameSiteMode>(_cookieOptions.SameSite, true);
         var options = new CookieOptions
         {
             HttpOnly = true,
             Secure = true,
             SameSite = sameSite,
             Path = "/api/auth",
-            Domain = _cookieOptions.Domain
+            Domain = _cookieOptions.Domain,
         };
         Response.Cookies.Delete(_cookieOptions.Name, options);
         options.HttpOnly = false;

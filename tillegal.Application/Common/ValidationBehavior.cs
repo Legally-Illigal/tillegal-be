@@ -1,4 +1,6 @@
 using FluentValidation;
+using FluentValidation.Results;
+
 using MediatR;
 
 namespace Tillegal.Application.Common.Behaviors
@@ -26,10 +28,9 @@ namespace Tillegal.Application.Common.Behaviors
 
             var context = new ValidationContext<TRequest>(request);
 
-            var validationResults = await Task.WhenAll(
+            ValidationResult[] validationResults = await Task.WhenAll(
                 _validators.Select(v =>
-                    v.ValidateAsync(context, cancellationToken))
-            );
+                    v.ValidateAsync(context, cancellationToken)));
 
             var errors = validationResults
                 .SelectMany(result => result.Errors)

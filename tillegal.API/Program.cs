@@ -1,15 +1,19 @@
+using System.Text.Json.Serialization;
+
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
+
+using OpenTelemetry;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+
 using Tillegal.API;
 using Tillegal.API.Common;
 using Tillegal.Application;
 using Tillegal.Infrastructure;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.AspNetCore.HttpOverrides;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
-using System.Text.Json.Serialization;
 
-var builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 // Presentation / API
 builder.Services.AddControllers()
@@ -42,7 +46,7 @@ builder.Services.AddHealthChecks()
     .AddCheck<SupabaseStorageHealthCheck>("supabase-storage", tags: ["ready"]);
 
 var otlpEndpoint = builder.Configuration["OpenTelemetry:OtlpEndpoint"];
-var openTelemetry = builder.Services.AddOpenTelemetry()
+OpenTelemetryBuilder openTelemetry = builder.Services.AddOpenTelemetry()
     .ConfigureResource(resource => resource.AddService("tillegal-api"));
 openTelemetry.WithMetrics(metrics =>
 {
@@ -50,7 +54,7 @@ openTelemetry.WithMetrics(metrics =>
         .AddAspNetCoreInstrumentation()
         .AddHttpClientInstrumentation()
         .AddRuntimeInstrumentation();
-    if (Uri.TryCreate(otlpEndpoint, UriKind.Absolute, out var metricsEndpoint))
+    if (Uri.TryCreate(otlpEndpoint, UriKind.Absolute, out Uri? metricsEndpoint))
     {
         metrics.AddOtlpExporter(options => options.Endpoint = metricsEndpoint);
     }
@@ -60,7 +64,7 @@ openTelemetry.WithTracing(tracing =>
     tracing
         .AddAspNetCoreInstrumentation()
         .AddHttpClientInstrumentation();
-    if (Uri.TryCreate(otlpEndpoint, UriKind.Absolute, out var tracesEndpoint))
+    if (Uri.TryCreate(otlpEndpoint, UriKind.Absolute, out Uri? tracesEndpoint))
     {
         tracing.AddOtlpExporter(options => options.Endpoint = tracesEndpoint);
     }
@@ -77,11 +81,10 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 // Build Application
-var app = builder.Build();
+WebApplication app = builder.Build();
 
 // Exception Handling
 app.UseExceptionHandler();
-
 
 // Swagger
 if (app.Environment.IsDevelopment())
@@ -89,7 +92,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
 
 // HTTP Pipeline
 app.UseForwardedHeaders();
@@ -102,11 +104,11 @@ app.MapControllers();
 app.MapHealthChecks("/health/live", new HealthCheckOptions
 {
     Predicate = _ => false,
-    ResponseWriter = HealthCheckResponseWriter.WriteAsync
+    ResponseWriter = HealthCheckResponseWriter.WriteAsync,
 });
 app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
     Predicate = check => check.Tags.Contains("ready"),
-    ResponseWriter = HealthCheckResponseWriter.WriteAsync
+    ResponseWriter = HealthCheckResponseWriter.WriteAsync,
 });
 app.Run();

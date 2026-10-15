@@ -1,7 +1,9 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
+
 using Microsoft.Extensions.Options;
+
 using Tillegal.Application.Common.Abstractions;
 
 namespace Tillegal.Infrastructure.Storage.Supabase;
@@ -29,7 +31,7 @@ public sealed class SupabaseObjectStorage(
         request.Content = new StreamContent(content);
         request.Content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
 
-        using var response = await httpClient.SendAsync(
+        using HttpResponseMessage response = await httpClient.SendAsync(
             request,
             HttpCompletionOption.ResponseHeadersRead,
             cancellationToken);
@@ -48,7 +50,7 @@ public sealed class SupabaseObjectStorage(
         {
             Content = JsonContent.Create(new { prefixes = new[] { objectPath } })
         };
-        using var response = await httpClient.SendAsync(request, cancellationToken);
+        using HttpResponseMessage response = await httpClient.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
     }
 
@@ -66,17 +68,17 @@ public sealed class SupabaseObjectStorage(
         }
 
         var route = $"object/sign/{Uri.EscapeDataString(_options.BucketName)}/{EscapeObjectPath(objectPath)}";
-        using var response = await httpClient.PostAsJsonAsync(
+        using HttpResponseMessage response = await httpClient.PostAsJsonAsync(
             route,
             new { expiresIn = (long)expiresIn.TotalSeconds },
             cancellationToken);
         response.EnsureSuccessStatusCode();
 
-        var result = await response.Content.ReadFromJsonAsync<SignedUrlResponse>(
+        SignedUrlResponse result = await response.Content.ReadFromJsonAsync<SignedUrlResponse>(
             cancellationToken: cancellationToken)
             ?? throw new InvalidOperationException("Supabase returned an empty signed URL response.");
 
-        if (Uri.TryCreate(result.SignedUrl, UriKind.Absolute, out var absoluteUri))
+        if (Uri.TryCreate(result.SignedUrl, UriKind.Absolute, out Uri? absoluteUri))
         {
             return absoluteUri;
         }

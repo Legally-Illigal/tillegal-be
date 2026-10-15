@@ -1,10 +1,12 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Tillegal.Application.Authentication;
+
 using StackExchange.Redis;
+
+using Tillegal.Application.Authentication;
 using Tillegal.Application.Common.Abstractions;
 using Tillegal.Infrastructure.Authentication;
 using Tillegal.Infrastructure.Caching.Redis;
@@ -26,9 +28,9 @@ public static class DependencyInjection
                 "Connection string 'DefaultConnection' is required. Configure it using User Secrets or an environment variable.");
         }
 
-        var supabaseOptions = configuration.GetSection("Supabase").Get<SupabaseStorageOptions>();
+        SupabaseStorageOptions? supabaseOptions = configuration.GetSection("Supabase").Get<SupabaseStorageOptions>();
         if (supabaseOptions is null
-            || !Uri.TryCreate(supabaseOptions.Url, UriKind.Absolute, out var supabaseUri)
+            || !Uri.TryCreate(supabaseOptions.Url, UriKind.Absolute, out Uri? supabaseUri)
             || supabaseUri.Scheme != Uri.UriSchemeHttps
             || string.IsNullOrWhiteSpace(supabaseOptions.ServiceRoleKey)
             || string.IsNullOrWhiteSpace(supabaseOptions.BucketName))
@@ -37,9 +39,9 @@ public static class DependencyInjection
                 "Supabase:Url, Supabase:ServiceRoleKey and Supabase:BucketName must be configured with an HTTPS project URL and private bucket.");
         }
 
-        var rabbitOptions = configuration.GetSection("RabbitMQ").Get<RabbitMqOptions>();
+        RabbitMqOptions? rabbitOptions = configuration.GetSection("RabbitMQ").Get<RabbitMqOptions>();
         if (rabbitOptions is null
-            || !Uri.TryCreate(rabbitOptions.Uri, UriKind.Absolute, out var rabbitUri)
+            || !Uri.TryCreate(rabbitOptions.Uri, UriKind.Absolute, out Uri? rabbitUri)
             || rabbitUri.Scheme != "amqps"
             || string.IsNullOrWhiteSpace(rabbitOptions.ExchangeName))
         {
@@ -93,7 +95,7 @@ public static class DependencyInjection
         services.AddSingleton<IMessagePublisher, RabbitMqPublisher>();
         services.AddHttpClient<IObjectStorage, SupabaseObjectStorage>((provider, client) =>
         {
-            var options = provider.GetRequiredService<IOptions<SupabaseStorageOptions>>().Value;
+            SupabaseStorageOptions options = provider.GetRequiredService<IOptions<SupabaseStorageOptions>>().Value;
             client.BaseAddress = new Uri(options.Url.TrimEnd('/') + "/storage/v1/");
             client.DefaultRequestHeaders.TryAddWithoutValidation("apikey", options.ServiceRoleKey);
             client.DefaultRequestHeaders.Authorization =
@@ -102,7 +104,7 @@ public static class DependencyInjection
         });
         services.AddHttpClient("SupabaseStorageHealth", (provider, client) =>
         {
-            var options = provider.GetRequiredService<IOptions<SupabaseStorageOptions>>().Value;
+            SupabaseStorageOptions options = provider.GetRequiredService<IOptions<SupabaseStorageOptions>>().Value;
             client.BaseAddress = new Uri(options.Url.TrimEnd('/') + "/storage/v1/");
             client.DefaultRequestHeaders.TryAddWithoutValidation("apikey", options.ServiceRoleKey);
             client.DefaultRequestHeaders.Authorization =

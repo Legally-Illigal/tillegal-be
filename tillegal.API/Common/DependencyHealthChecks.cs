@@ -1,8 +1,13 @@
 using System.Text.Json;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
+
+using RabbitMQ.Client;
+
 using StackExchange.Redis;
+
 using Tillegal.Infrastructure.Caching.Redis;
 using Tillegal.Infrastructure.Messaging.RabbitMQ;
 using Tillegal.Infrastructure.Persistence.PostgreSQL;
@@ -55,7 +60,7 @@ public sealed class RabbitMqHealthCheck(RabbitMqConnection rabbitMq) : IHealthCh
     {
         try
         {
-            var connection = await rabbitMq.GetConnectionAsync(cancellationToken);
+            IConnection connection = await rabbitMq.GetConnectionAsync(cancellationToken);
             return connection.IsOpen
                 ? HealthCheckResult.Healthy()
                 : HealthCheckResult.Unhealthy("RabbitMQ is unavailable.");
@@ -77,9 +82,9 @@ public sealed class SupabaseStorageHealthCheck(
     {
         try
         {
-            var client = httpClientFactory.CreateClient("SupabaseStorageHealth");
+            HttpClient client = httpClientFactory.CreateClient("SupabaseStorageHealth");
             var bucket = Uri.EscapeDataString(options.Value.BucketName);
-            using var response = await client.GetAsync(
+            using HttpResponseMessage response = await client.GetAsync(
                 $"bucket/{bucket}",
                 cancellationToken);
             return response.IsSuccessStatusCode
@@ -106,8 +111,8 @@ public static class HealthCheckResponseWriter
             checks = report.Entries.Select(entry => new
             {
                 name = entry.Key,
-                status = entry.Value.Status.ToString()
-            })
+                status = entry.Value.Status.ToString(),
+            }),
         };
         return JsonSerializer.SerializeAsync(
             context.Response.Body,

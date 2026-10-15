@@ -1,6 +1,8 @@
 using System.Net;
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+
 using Tillegal.API.Models;
 
 namespace Tillegal.API.Common
@@ -8,7 +10,7 @@ namespace Tillegal.API.Common
     public class ApiResponseWrapperFilter : IAsyncResultFilter
     {
         public async Task OnResultExecutionAsync(
-            ResultExecutingContext context, 
+            ResultExecutingContext context,
             ResultExecutionDelegate next)
         {
             switch (context.Result)
@@ -23,14 +25,14 @@ namespace Tillegal.API.Common
                 case StatusCodeResult statusCodeResult:
                     context.Result = new ObjectResult(Build(null, statusCodeResult.StatusCode))
                     {
-                        StatusCode = statusCodeResult.StatusCode
+                        StatusCode = statusCodeResult.StatusCode,
                     };
                     break;
 
                 case EmptyResult:
                     context.Result = new ObjectResult(Build(null, StatusCodes.Status200OK))
                     {
-                        StatusCode = StatusCodes.Status200OK
+                        StatusCode = StatusCodes.Status200OK,
                     };
                     break;
             }
@@ -56,7 +58,7 @@ namespace Tillegal.API.Common
                 ProblemDetails pd => new[] { pd.Detail ?? pd.Title ?? DefaultMessage(statusCode) },
                 string s => new[] { s },
                 null => new[] { DefaultMessage(statusCode) },
-                _ => new[] { value.ToString()! }
+                _ => new[] { value.ToString()! },
             };
         }
 

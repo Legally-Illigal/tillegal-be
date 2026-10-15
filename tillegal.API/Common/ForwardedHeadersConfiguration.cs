@@ -1,4 +1,5 @@
 using System.Net;
+
 using Microsoft.AspNetCore.HttpOverrides;
 
 namespace Tillegal.API.Common;
@@ -18,7 +19,7 @@ public static class ForwardedHeadersConfiguration
 
         foreach (var proxy in knownProxies)
         {
-            if (!IPAddress.TryParse(proxy, out var address))
+            if (!IPAddress.TryParse(proxy, out IPAddress? address))
             {
                 throw new InvalidOperationException(
                     $"ForwardedHeaders:KnownProxies contains an invalid IP address: {proxy}");

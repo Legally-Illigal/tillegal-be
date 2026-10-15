@@ -1,10 +1,15 @@
-using FluentValidation;
-using Mapster;
-using MapsterMapper;
-using Tillegal.Application.Common.Behaviors;
-using Tillegal.Application.Authentication;
 using System.Reflection;
+
+using FluentValidation;
+
+using Mapster;
+
+using MapsterMapper;
+
 using Microsoft.Extensions.DependencyInjection;
+
+using Tillegal.Application.Authentication;
+using Tillegal.Application.Common.Behaviors;
 
 namespace Tillegal.Application
 {
@@ -23,7 +28,7 @@ namespace Tillegal.Application
             services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
             services.AddScoped<IAuthenticationService, AuthenticationService>();
 
-            var config = TypeAdapterConfig.GlobalSettings;
+            TypeAdapterConfig config = TypeAdapterConfig.GlobalSettings;
             config.Scan(Assembly.GetExecutingAssembly());
 
             services.AddSingleton(config);

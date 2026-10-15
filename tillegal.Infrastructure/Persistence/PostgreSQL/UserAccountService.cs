@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+
 using Tillegal.Application.Authentication;
 
 namespace Tillegal.Infrastructure.Persistence.PostgreSQL;
@@ -19,7 +20,7 @@ public sealed class UserAccountService(
             Email = email
         };
 
-        var result = await userManager.CreateAsync(user, password);
+        IdentityResult result = await userManager.CreateAsync(user, password);
         if (!result.Succeeded)
         {
             return new UserRegistrationResult(
@@ -39,7 +40,7 @@ public sealed class UserAccountService(
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var user = await userManager.FindByEmailAsync(email);
+        ApplicationUser? user = await userManager.FindByEmailAsync(email);
         if (user is null)
         {
             return null;
@@ -58,7 +59,7 @@ public sealed class UserAccountService(
 
         await userManager.ResetAccessFailedCountAsync(user);
 
-        var roles = await userManager.GetRolesAsync(user);
+        IList<string> roles = await userManager.GetRolesAsync(user);
         return new UserAccount(user.Id.ToString(), user.Email!, roles.ToArray());
     }
 
@@ -67,18 +68,18 @@ public sealed class UserAccountService(
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (!Guid.TryParse(userId, out var id))
+        if (!Guid.TryParse(userId, out Guid id))
         {
             return null;
         }
 
-        var user = await userManager.FindByIdAsync(id.ToString());
+        ApplicationUser? user = await userManager.FindByIdAsync(id.ToString());
         if (user?.Email is null)
         {
             return null;
         }
 
-        var roles = await userManager.GetRolesAsync(user);
+        IList<string> roles = await userManager.GetRolesAsync(user);
         return new UserAccount(user.Id.ToString(), user.Email, roles.ToArray());
     }
 }

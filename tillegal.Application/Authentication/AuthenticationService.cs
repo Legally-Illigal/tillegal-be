@@ -16,7 +16,7 @@ public sealed class AuthenticationService(
         string password,
         CancellationToken cancellationToken)
     {
-        var user = await userAccountService.ValidateCredentialsAsync(
+        UserAccount? user = await userAccountService.ValidateCredentialsAsync(
             email,
             password,
             cancellationToken);
@@ -33,7 +33,7 @@ public sealed class AuthenticationService(
         string refreshToken,
         CancellationToken cancellationToken)
     {
-        var refreshSession = await refreshTokenStore.RotateAsync(
+        RefreshTokenSession? refreshSession = await refreshTokenStore.RotateAsync(
             refreshToken,
             cancellationToken);
         if (refreshSession is null)
@@ -41,7 +41,7 @@ public sealed class AuthenticationService(
             return null;
         }
 
-        var user = await userAccountService.FindByIdAsync(
+        UserAccount? user = await userAccountService.FindByIdAsync(
             refreshSession.UserId,
             cancellationToken);
         if (user is null)
@@ -52,7 +52,7 @@ public sealed class AuthenticationService(
             return null;
         }
 
-        var accessToken = accessTokenIssuer.Issue(user);
+        AccessTokenResult accessToken = accessTokenIssuer.Issue(user);
         return new AuthSession(
             accessToken.Token,
             accessToken.ExpiresAt,
@@ -69,8 +69,8 @@ public sealed class AuthenticationService(
         UserAccount user,
         CancellationToken cancellationToken)
     {
-        var accessToken = accessTokenIssuer.Issue(user);
-        var refreshToken = await refreshTokenStore.IssueAsync(
+        AccessTokenResult accessToken = accessTokenIssuer.Issue(user);
+        RefreshTokenSession refreshToken = await refreshTokenStore.IssueAsync(
             user.Id,
             cancellationToken);
 

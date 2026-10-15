@@ -1,6 +1,9 @@
 using System.Text.Json;
+
 using Microsoft.Extensions.Options;
+
 using RabbitMQ.Client;
+
 using Tillegal.Application.Common.Abstractions;
 
 namespace Tillegal.Infrastructure.Messaging.RabbitMQ;
@@ -20,8 +23,8 @@ public sealed class RabbitMqPublisher(
         ArgumentException.ThrowIfNullOrWhiteSpace(routingKey);
         ArgumentNullException.ThrowIfNull(message);
 
-        var rabbitConnection = await connection.GetConnectionAsync(cancellationToken);
-        await using var channel = await rabbitConnection.CreateChannelAsync(
+        IConnection rabbitConnection = await connection.GetConnectionAsync(cancellationToken);
+        await using IChannel channel = await rabbitConnection.CreateChannelAsync(
             cancellationToken: cancellationToken);
 
         await channel.ExchangeDeclareAsync(

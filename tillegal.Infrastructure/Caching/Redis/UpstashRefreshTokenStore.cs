@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
+
 using StackExchange.Redis;
+
 using Tillegal.Application.Authentication;
 
 namespace Tillegal.Infrastructure.Caching.Redis;
@@ -42,7 +44,7 @@ public sealed class UpstashRefreshTokenStore(
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var result = await _database.ScriptEvaluateAsync(
+        RedisResult result = await _database.ScriptEvaluateAsync(
             ConsumeTokenScript,
             new RedisKey[] { GetKey(token) });
         var userId = (string?)result;

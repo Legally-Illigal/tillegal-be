@@ -1,7 +1,9 @@
 using System.Net;
 using System.Security.Claims;
 using System.Threading.RateLimiting;
+
 using Microsoft.AspNetCore.RateLimiting;
+
 using Tillegal.API.Models;
 
 namespace Tillegal.API.Common;
@@ -12,7 +14,7 @@ public static class RateLimitingExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var limits = configuration.GetSection("RateLimiting").Get<RateLimitingOptions>() ?? new();
+        RateLimitingOptions limits = configuration.GetSection("RateLimiting").Get<RateLimitingOptions>() ?? new();
         if (limits.GlobalPermitLimit < 1
             || limits.GlobalWindowSeconds < 1
             || limits.AuthPermitLimit < 1
@@ -32,7 +34,7 @@ public static class RateLimitingExtensions
                         PermitLimit = limits.GlobalPermitLimit,
                         Window = TimeSpan.FromSeconds(limits.GlobalWindowSeconds),
                         QueueLimit = 0,
-                        AutoReplenishment = true
+                        AutoReplenishment = true,
                     }));
 
             options.AddPolicy("auth", context =>
@@ -43,7 +45,7 @@ public static class RateLimitingExtensions
                         PermitLimit = limits.AuthPermitLimit,
                         Window = TimeSpan.FromSeconds(limits.AuthWindowSeconds),
                         QueueLimit = 0,
-                        AutoReplenishment = true
+                        AutoReplenishment = true,
                     }));
 
             options.OnRejected = async (context, cancellationToken) =>
