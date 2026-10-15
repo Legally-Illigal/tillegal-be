@@ -60,6 +60,9 @@ dotnet_naming_rule.entity_suffix.style = entity_suffix_style
 # XML documentation analysis requirement
 dotnet_diagnostic.SA0001.severity = none
 
+# Tắt cảnh báo SA1600 (Elements should be documented)
+dotnet_diagnostic.SA1600.severity = none
+
 dotnet_diagnostic.SA1633.severity = none
 # Using directives placement and ordering
 
