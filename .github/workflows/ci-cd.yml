@@ -3,9 +3,9 @@ name: CI‑CD – Backend (tillegal‑be)
 # Run on every push or PR to any branch
 on:
   push:
-    branches: [ "**" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "**" ]
+    branches: [ "main" ]
 
 permissions:
   contents: read   # required for checkout
