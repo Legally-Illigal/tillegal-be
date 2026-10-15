@@ -1,0 +1,94 @@
+name: CI‑CD – Backend (tillegal‑be)
+
+# Run on every push or PR to any branch
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+
+permissions:
+  contents: read   # required for checkout
+  packages: read   # if you later publish a Docker image
+
+jobs:
+  build:
+    runs-on: windows-latest   # .NET 10 SDK runs on Windows
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      # -------------------------------------------------
+      # 1️⃣ Checkout the repository
+      # -------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -------------------------------------------------
+      # 2️⃣ Install .NET SDK 10.0
+      # -------------------------------------------------
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      # -------------------------------------------------
+      # 3️⃣ Restore NuGet packages
+      # -------------------------------------------------
+      - name: Restore dependencies
+        run: dotnet restore
+
+      # -------------------------------------------------
+      # 4️⃣ Verify code style & formatting
+      # -------------------------------------------------
+      - name: Check code formatting
+        run: dotnet format --verify-no-changes
+
+      # -------------------------------------------------
+      # 5️⃣ Build solution (Release)
+      # -------------------------------------------------
+      - name: Build solution
+        run: dotnet build --configuration Release --no-restore
+
+      # -------------------------------------------------
+      # 6️⃣ Run unit / integration tests (if any)
+      # -------------------------------------------------
+      - name: Run tests
+        # The solution does not yet contain test projects,
+        # but this step will succeed (zero tests) and will
+        # automatically pick up new test projects later.
+        run: dotnet test --no-build --configuration Release --verbosity normal
+
+      # -------------------------------------------------
+      # 7️⃣ Publish API (self‑contained) – artifact for CD
+      # -------------------------------------------------
+      - name: Publish API
+        run: |
+          dotnet publish ./tillegal.API/tillegal.API.csproj `
+            -c Release `
+            -o ./publish/api `
+            --no-restore `
+            /p:PublishTrimmed=true `
+            /p:PublishReadyToRun=true
+
+      # -------------------------------------------------
+      # 8️⃣ Upload published API as artifact (optional CD step)
+      # -------------------------------------------------
+      - name: Upload API artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tillegal-api
+          path: ./publish/api/**
+
+      # -------------------------------------------------
+      # 9️⃣ (Optional) Docker build & push – uncomment if you
+      #      have a Dockerfile and a container registry
+      # -------------------------------------------------
+      # - name: Build & push Docker image
+      #   uses: docker/build-push-action@v5
+      #   with:
+      #     context: ./tillegal.API
+      #     file: ./tillegal.API/Dockerfile
+      #     push: false   # set true + add registry credentials when ready
+      #     tags: your-registry/tillegal-api:latest

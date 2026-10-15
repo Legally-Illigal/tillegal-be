@@ -1,0 +1,55 @@
+root = true
+
+[*.cs]
+# Indentation
+indent_style = space
+indent_size = 4
+
+# Max line length
+max_line_length = 120
+
+# Trim trailing whitespace
+trim_trailing_whitespace = true
+
+# Ensure final newline
+insert_final_newline = true
+
+# Using directives ordering
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = true
+dotnet_style_namespace_declarations = file_scoped:warning
+
+# Braces style
+csharp_new_line_before_open_brace = all
+csharp_new_line_before_open_brace_in_methods = true
+csharp_new_line_before_open_brace_in_properties = true
+csharp_new_line_before_open_brace_in_types = true
+
+# Expression‑bodied members when possible
+csharp_style_expression_bodied_methods = when_possible:warning
+csharp_style_expression_bodied_constructors = when_possible:warning
+csharp_style_expression_bodied_properties = when_possible:warning
+
+# Prefer var for built‑in types, but explicit for others
+csharp_style_var_for_built_in_types = true:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = false:warning
+
+# Prefer interpolated strings
+csharp_style_prefer_interpolated_strings = true:suggestion
+
+# Naming rules (interface prefix I)
+dotnet_naming_rule.interface_prefix.rule = true
+dotnet_naming_symbols.interface.applicable_kinds = interface
+dotnet_naming_style.interface_prefix_style.required_prefix = I
+dotnet_naming_rule.interface_prefix.severity = error
+dotnet_naming_rule.interface_prefix.symbols = interface
+dotnet_naming_rule.interface_prefix.style = interface_prefix_style
+
+# Entity suffix (when they appear)
+dotnet_naming_symbols.entity.applicable_kinds = class
+dotnet_naming_symbols.entity.required_modifiers = public
+dotnet_naming_style.entity_suffix_style.required_suffix = Entity
+dotnet_naming_rule.entity_suffix.severity = suggestion
+dotnet_naming_rule.entity_suffix.symbols = entity
+dotnet_naming_rule.entity_suffix.style = entity_suffix_style

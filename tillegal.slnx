@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="tillegal.API/tillegal.API.csproj" />
+  <Project Path="tillegal.Application/tillegal.Application.csproj" />
+  <Project Path="tillegal.Domain/tillegal.Domain.csproj" />
+	<Project Path="tillegal.Infrastructure/tillegal.Infrastructure.csproj" />
+</Solution>
