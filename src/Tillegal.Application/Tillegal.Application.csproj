@@ -1,0 +1,39 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Tillegal.Domain\Tillegal.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Common\" />
+    <Folder Include="Common\Interfaces\" />
+    <Folder Include="Common\Behaviors\" />
+    <Folder Include="Common\Mappings\" />
+    <Folder Include="Features\" />
+    <Folder Include="Features\Auth\" />
+    <Folder Include="Features\Auth\Commands\" />
+    <Folder Include="Features\Auth\Commands\Register\" />
+    <Folder Include="Features\Auth\Commands\Login\" />
+    <Folder Include="Features\Auth\Dtos\" />
+    <Folder Include="Features\Conversations\" />
+    <Folder Include="Features\Conversations\Commands\" />
+    <Folder Include="Features\Conversations\Commands\CreateConversation\" />
+    <Folder Include="Features\Conversations\Commands\DeleteConversation\" />
+    <Folder Include="Features\Conversations\Queries\" />
+    <Folder Include="Features\Conversations\Queries\GetConversationsPaged\" />
+    <Folder Include="Features\Conversations\Dtos\" />
+    <Folder Include="Features\Chat\" />
+    <Folder Include="Features\Chat\Commands\" />
+    <Folder Include="Features\Chat\Commands\SendQuestion\" />
+    <Folder Include="Features\Chat\Queries\" />
+    <Folder Include="Features\Chat\Queries\GetMessagesByCursor\" />
+    <Folder Include="Features\Chat\Dtos\" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

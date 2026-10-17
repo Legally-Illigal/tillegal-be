@@ -36,20 +36,47 @@ ScaffoldingReadMe.txt
 # NuGet Symbol Packages
 *.snupkg
 
-# dotenv environment variables file
-.env
+# Visual Studio and IDE state
+.vs/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
 
-# Others
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+!.env.template
+*.secrets.json
+*.local.json
+*.pfx
+*.p12
+
+# Temporary files and logs
 ~$*
 *~
+*.tmp
+*.temp
+*.bak
+
+# Test results and coverage
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
 CodeCoverage/
+coverage/
+coverage.*
+*.coverage
+*.coveragexml
+*.opencover.xml
+
+# Publish output
+publish/
+[Pp]ublishOutput/
 
 # MSBuild Binary and Structured Log
 *.binlog
-
-# MSTest test Results
-[Tt]est[Rr]esult*/
-[Bb]uild[Ll]og.*
 
 # NUnit
 *.VisualState.xml

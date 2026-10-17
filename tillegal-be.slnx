@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Tillegal.Api/Tillegal.Api.csproj" />
+    <Project Path="src/Tillegal.AppHost/Tillegal.AppHost.csproj" />
+    <Project Path="src/Tillegal.Application/Tillegal.Application.csproj" />
+    <Project Path="src/Tillegal.Domain/Tillegal.Domain.csproj" />
+    <Project Path="src/Tillegal.Infrastructure/Tillegal.Infrastructure.csproj" />
+    <Project Path="src/Tillegal.Persistence/Tillegal.Persistence.csproj" />
+  </Folder>
+</Solution>
