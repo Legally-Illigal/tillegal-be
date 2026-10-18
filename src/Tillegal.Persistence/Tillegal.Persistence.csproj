@@ -9,6 +9,11 @@
     <Folder Include="Context\" />
     <Folder Include="Configurations\" />
     <Folder Include="Repositories\" />
+    <Folder Include="Repositories\Auth\" />
+    <Folder Include="Repositories\Conversations\" />
+    <Folder Include="Repositories\Chat\" />
+    <Folder Include="SeedData\" />
+    <Folder Include="SeedData\Development\" />
     <Folder Include="Migrations\" />
   </ItemGroup>
 
