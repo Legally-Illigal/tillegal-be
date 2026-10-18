@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Tillegal.AppHost.Options;
+using Tillegal.Infrastructure.Options;
 using Tillegal.Infrastructure;
 
 namespace Tillegal.AppHost.Configurations;

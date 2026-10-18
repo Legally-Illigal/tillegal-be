@@ -1,4 +1,4 @@
-namespace Tillegal.AppHost.Options;
+namespace Tillegal.Infrastructure.Options;
 
 public sealed class SupabaseOptions
 {

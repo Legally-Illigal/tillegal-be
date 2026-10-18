@@ -1,11 +1,14 @@
 using System.Net.Http.Headers;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Tillegal.Application.Common.Interfaces;
+using Tillegal.Infrastructure.Options;
 
 namespace Tillegal.Infrastructure.ExternalServices.Storage;
 
-public sealed class SupabaseStorageService(HttpClient httpClient, IConfiguration configuration) : IStorageService
+public sealed class SupabaseStorageService(HttpClient httpClient, IOptions<SupabaseOptions> options) : IStorageService
 {
+    private readonly SupabaseOptions _options = options.Value;
+
     public async Task UploadAsync(
         string objectKey,
         Stream content,
@@ -60,18 +63,13 @@ public sealed class SupabaseStorageService(HttpClient httpClient, IConfiguration
             throw new ArgumentException("Object keys must contain valid path segments.", nameof(objectKey));
         }
 
-        var projectUrl = GetRequiredSetting("Supabase:Url").TrimEnd('/');
-        var bucket = Uri.EscapeDataString(GetRequiredSetting("Supabase:Bucket"));
+        var projectUrl = _options.Url.TrimEnd('/');
+        var bucket = Uri.EscapeDataString(_options.Bucket);
         var escapedKey = string.Join('/', objectKey.Split('/').Select(Uri.EscapeDataString));
-        var serviceKey = GetRequiredSetting("Supabase:ServiceKey");
+        var serviceKey = _options.ServiceKey;
         var request = new HttpRequestMessage(method, $"{projectUrl}/storage/v1/object/{bucket}/{escapedKey}");
         request.Headers.TryAddWithoutValidation("apikey", serviceKey);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", serviceKey);
         return request;
     }
-
-    private string GetRequiredSetting(string key) =>
-        configuration[key] is { Length: > 0 } value
-            ? value
-            : throw new InvalidOperationException($"Required configuration '{key}' is missing.");
 }

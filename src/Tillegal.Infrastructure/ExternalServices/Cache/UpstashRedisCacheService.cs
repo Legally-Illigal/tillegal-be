@@ -2,8 +2,9 @@ using System.Globalization;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Tillegal.Application.Common.Interfaces;
+using Tillegal.Infrastructure.Options;
 
 namespace Tillegal.Infrastructure.ExternalServices.Cache;
 
@@ -12,10 +13,10 @@ public sealed class UpstashRedisCacheService : ICacheService
     private readonly HttpClient _httpClient;
     private readonly string _token;
 
-    public UpstashRedisCacheService(HttpClient httpClient, IConfiguration configuration)
+    public UpstashRedisCacheService(HttpClient httpClient, IOptions<RedisOptions> options)
     {
-        var restUrl = configuration["Upstash:RedisRestUrl"];
-        if (!Uri.TryCreate(restUrl, UriKind.Absolute, out var baseAddress)
+        var redisOptions = options.Value;
+        if (!Uri.TryCreate(redisOptions.RedisRestUrl, UriKind.Absolute, out var baseAddress)
             || baseAddress.Scheme != Uri.UriSchemeHttps
             || !string.IsNullOrEmpty(baseAddress.Query)
             || !string.IsNullOrEmpty(baseAddress.Fragment))
@@ -24,8 +25,8 @@ public sealed class UpstashRedisCacheService : ICacheService
                 "Configure 'Upstash:RedisRestUrl' with the HTTPS REST URL from the Upstash console.");
         }
 
-        _token = configuration["Upstash:RedisRestToken"] is { Length: > 0 } token
-            ? token
+        _token = !string.IsNullOrWhiteSpace(redisOptions.RedisRestToken)
+            ? redisOptions.RedisRestToken
             : throw new InvalidOperationException(
                 "Configure 'Upstash:RedisRestToken' with the REST token from the Upstash console.");
 

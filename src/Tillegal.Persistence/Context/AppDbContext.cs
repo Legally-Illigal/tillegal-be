@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Tillegal.Application.Common.Interfaces;
@@ -14,6 +15,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+        ApplySoftDeleteQueryFilter(modelBuilder);
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
@@ -42,9 +44,15 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         var transaction = _currentTransaction
             ?? throw new InvalidOperationException("There is no active transaction to commit.");
 
-        await transaction.CommitAsync(cancellationToken);
-        await transaction.DisposeAsync();
-        _currentTransaction = null;
+        try
+        {
+            await transaction.CommitAsync(cancellationToken);
+        }
+        finally
+        {
+            await transaction.DisposeAsync();
+            _currentTransaction = null;
+        }
     }
 
     public async Task RollbackTransactionAsync(CancellationToken cancellationToken = default)
@@ -52,9 +60,15 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
         var transaction = _currentTransaction
             ?? throw new InvalidOperationException("There is no active transaction to roll back.");
 
-        await transaction.RollbackAsync(cancellationToken);
-        await transaction.DisposeAsync();
-        _currentTransaction = null;
+        try
+        {
+            await transaction.RollbackAsync(cancellationToken);
+        }
+        finally
+        {
+            await transaction.DisposeAsync();
+            _currentTransaction = null;
+        }
     }
 
     private void SetUpdatedTimestamps()
@@ -65,6 +79,23 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
             if (entry.State == EntityState.Modified)
             {
                 entry.Property(entity => entity.UpdatedAt).CurrentValue = now;
+            }
+        }
+    }
+
+    private static void ApplySoftDeleteQueryFilter(ModelBuilder modelBuilder)
+    {
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
+            {
+                var parameter = Expression.Parameter(entityType.ClrType, "entity");
+                var property = Expression.Property(parameter, nameof(BaseEntity.DeletedAt));
+                var nullConstant = Expression.Constant(null, typeof(DateTimeOffset?));
+                var compare = Expression.Equal(property, nullConstant);
+                var lambda = Expression.Lambda(compare, parameter);
+
+                modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
             }
         }
     }

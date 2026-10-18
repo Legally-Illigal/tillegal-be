@@ -4,8 +4,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Tillegal.Application.Common.Exceptions;
 using Tillegal.Domain.Exceptions;
-using DomainUnauthorizedAccessException = Tillegal.Domain.Exceptions.UnauthorizedAccessException;
 
 namespace Tillegal.Api.Middlewares;
 
@@ -68,20 +68,23 @@ public sealed class ExceptionHandlingMiddleware(
                         .ToDictionary(group => group.Key, group => group.Select(failure => failure.ErrorMessage).ToArray())
                 }
             },
-            NotFoundException => new ProblemDetails
+            NotFoundException notFoundException => new ProblemDetails
             {
                 Status = StatusCodes.Status404NotFound,
-                Title = "Resource not found."
+                Title = "Resource not found.",
+                Detail = notFoundException.Message
             },
-            DomainUnauthorizedAccessException => new ProblemDetails
+            ForbiddenAccessException forbiddenException => new ProblemDetails
             {
                 Status = StatusCodes.Status403Forbidden,
-                Title = "Access denied."
+                Title = "Access denied.",
+                Detail = forbiddenException.Message
             },
-            DomainException => new ProblemDetails
+            DomainException domainException => new ProblemDetails
             {
                 Status = StatusCodes.Status400BadRequest,
-                Title = "The request violates a business rule."
+                Title = "The request violates a business rule.",
+                Detail = domainException.Message
             },
             _ => new ProblemDetails
             {

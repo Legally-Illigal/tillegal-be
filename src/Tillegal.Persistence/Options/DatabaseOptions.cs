@@ -1,4 +1,4 @@
-namespace Tillegal.AppHost.Options;
+namespace Tillegal.Persistence.Options;
 
 public sealed class DatabaseOptions
 {
