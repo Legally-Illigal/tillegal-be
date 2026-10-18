@@ -10,24 +10,14 @@
     <Folder Include="Common\Behaviors\" />
     <Folder Include="Common\Mappings\" />
     <Folder Include="Features\" />
-    <Folder Include="Features\Auth\" />
-    <Folder Include="Features\Auth\Commands\" />
-    <Folder Include="Features\Auth\Commands\Register\" />
-    <Folder Include="Features\Auth\Commands\Login\" />
-    <Folder Include="Features\Auth\Dtos\" />
-    <Folder Include="Features\Conversations\" />
-    <Folder Include="Features\Conversations\Commands\" />
-    <Folder Include="Features\Conversations\Commands\CreateConversation\" />
-    <Folder Include="Features\Conversations\Commands\DeleteConversation\" />
-    <Folder Include="Features\Conversations\Queries\" />
-    <Folder Include="Features\Conversations\Queries\GetConversationsPaged\" />
-    <Folder Include="Features\Conversations\Dtos\" />
-    <Folder Include="Features\Chat\" />
-    <Folder Include="Features\Chat\Commands\" />
-    <Folder Include="Features\Chat\Commands\SendQuestion\" />
-    <Folder Include="Features\Chat\Queries\" />
-    <Folder Include="Features\Chat\Queries\GetMessagesByCursor\" />
-    <Folder Include="Features\Chat\Dtos\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.11.0" />
+    <PackageReference Include="Mapster" Version="7.4.0" />
+    <PackageReference Include="Mapster.DependencyInjection" Version="1.0.1" />
+    <PackageReference Include="MediatR" Version="12.4.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
   </ItemGroup>
 
   <PropertyGroup>

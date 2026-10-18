@@ -18,6 +18,7 @@ public static class DependencyInjection
         IConfiguration configuration)
     {
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
+        services.AddSingleton<IPasswordHashingService, PasswordHashingService>();
         services.AddSingleton<CorrelationIdGenerator>();
         services.AddTransient<LoggingHandler>();
         services.AddHttpClient<ICacheService, UpstashRedisCacheService>()
