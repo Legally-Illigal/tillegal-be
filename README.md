@@ -7,7 +7,9 @@ Tillegal - Phần Backend của hệ thống.
 ```text
 src/
 ├── Tillegal.Domain/
-│   ├── Common/Models/
+│   ├── Common/
+│   │   ├── BaseEntity.cs
+│   │   └── IAggregateRoot.cs
 │   ├── Entities/
 │   ├── ValueObjects/
 │   ├── Exceptions/
@@ -53,4 +55,4 @@ The repository is the Server Boundary; there is no separate `Tillegal.Server` pr
 - `Api` → `Application` only.
 - `AppHost` → `Domain`, `Application`, `Persistence`, `Infrastructure`, `Api`.
 
-`Api` is a class library containing HTTP presentation code. `AppHost` is the ASP.NET Core entry point and composition root. Projects target .NET 10; folders are scaffolding only and contain no feature implementations yet.
+`Api` is a class library containing HTTP presentation code. `AppHost` is the ASP.NET Core entry point and composition root. Projects target .NET 10. Domain provides a base entity with audit timestamps, an aggregate-root marker, value-object equality, and domain exceptions; feature folders remain scaffolding.
