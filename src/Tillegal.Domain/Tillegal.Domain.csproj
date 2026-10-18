@@ -2,7 +2,6 @@
 
   <ItemGroup>
     <Folder Include="Common\" />
-    <Folder Include="Common\Models\" />
     <Folder Include="Entities\" />
     <Folder Include="ValueObjects\" />
     <Folder Include="Exceptions\" />
