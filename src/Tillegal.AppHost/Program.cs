@@ -1,4 +1,30 @@
-﻿var builder = WebApplication.CreateBuilder(args);
-var app = builder.Build();
+using Tillegal.Api.Middlewares;
+using Tillegal.AppHost.Configurations;
+using Tillegal.AppHost.Extensions;
 
-app.Run();
+var builder = WebApplication.CreateBuilder(args);
+builder.Logging.ClearProviders();
+builder.Logging.AddJsonConsole(options => options.IncludeScopes = true);
+builder.Services.AddApplicationServices(builder.Configuration);
+
+var app = builder.Build();
+app.UseForwardedHeaders();
+app.UseCors(Tillegal.Api.DependencyInjection.DefaultCorsPolicyName);
+app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseMiddleware<RequestLoggingMiddleware>();
+app.UseRateLimiter();
+app.UseAuthentication();
+app.UseAuthorization();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.MapControllers();
+app.MapHealthCheckEndpoints();
+
+await app.ApplyDevelopmentDatabaseChangesAsync();
+await app.RunAsync();

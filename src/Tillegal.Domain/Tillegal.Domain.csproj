@@ -2,11 +2,13 @@
 
   <ItemGroup>
     <Folder Include="Common\" />
-    <Folder Include="Common\Models\" />
     <Folder Include="Entities\" />
     <Folder Include="ValueObjects\" />
     <Folder Include="Exceptions\" />
-    <Folder Include="Repositories\" />
+    <Folder Include="Interfaces\" />
+    <Folder Include="Interfaces\Repositories\" />
+    <Folder Include="Interfaces\Services\" />
+    <Folder Include="Services\" />
   </ItemGroup>
 
   <PropertyGroup>

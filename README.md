@@ -1,56 +1,65 @@
 # tillegal-be
 
-Tillegal - Phần Backend của hệ thống.
+Tillegal - Hệ thống Backend (Clean Architecture + DDD) trên nền tảng **.NET 10**.
 
-## Solution structure
+---
+
+## 1. Cấu trúc Giải pháp (Solution Structure)
 
 ```text
-src/
-├── Tillegal.Domain/
-│   ├── Common/Models/
-│   ├── Entities/
-│   ├── ValueObjects/
-│   ├── Exceptions/
-│   └── Repositories/
-├── Tillegal.Application/
-│   ├── Common/Interfaces/
-│   ├── Common/Behaviors/
-│   ├── Common/Mappings/
-│   └── Features/
-│       ├── Auth/{Commands, Dtos}/
-│       ├── Conversations/{Commands, Queries, Dtos}/
-│       └── Chat/{Commands, Queries, Dtos}/
-├── Tillegal.Persistence/
-│   ├── Context/
-│   ├── Configurations/
-│   ├── Repositories/
-│   └── Migrations/
-├── Tillegal.Infrastructure/
-│   ├── ExternalServices/{AiService, Storage, Cache}/
-│   ├── Logging/
-│   └── SystemServices/
-├── Tillegal.Api/
-│   ├── Controllers/
-│   ├── Contracts/{Requests, Responses}/
-│   ├── Middlewares/
-│   ├── Filters/
-│   ├── Services/
-│   └── OpenAPI/
-└── Tillegal.AppHost/
-    ├── Configurations/
-    ├── Extensions/
-    └── Options/
+tillegal-be/
+├── src/
+│   ├── Tillegal.Domain/             # Enterprise Business Rules (Entities, Value Objects, Domain Events)
+│   ├── Tillegal.Application/        # Application Business Rules (CQRS, Use Cases, Behaviors, DTOs)
+│   ├── Tillegal.Persistence/        # PostgreSQL Data Access (EF Core DbContext, Configurations, Migrations)
+│   ├── Tillegal.Infrastructure/     # External Adapters (Upstash Redis, Resend Mail, Supabase Storage, Quartz)
+│   ├── Tillegal.Api/                # HTTP Presentation Library (Controllers, Middlewares, OpenAPI/Swagger)
+│   └── Tillegal.AppHost/            # Executable Web Host & Composition Root (Program.cs, DI Bootstrapper)
+└── tests/
+    ├── Tillegal.Application.UnitTests/  # Unit tests cho MediatR Behaviors, Services, Entities
+    └── Tillegal.ArchitectureTests/     # Architecture tests (NetArchTest) bảo vệ ranh giới Clean Architecture
 ```
 
-The repository is the Server Boundary; there is no separate `Tillegal.Server` project.
+---
 
-## Project references
+## 2. Quy tắc Phụ thuộc Kiến trúc (Architectural Boundaries)
 
-- `Domain`: no project dependencies.
-- `Application` → `Domain`.
-- `Persistence` → `Domain`, `Application`.
-- `Infrastructure` → `Application`.
-- `Api` → `Application` only.
-- `AppHost` → `Domain`, `Application`, `Persistence`, `Infrastructure`, `Api`.
+- **`Domain`**: Độc lập 100%, không phụ thuộc vào bất kỳ project nào.
+- **`Application`** $\rightarrow$ `Domain`.
+- **`Persistence`** $\rightarrow$ `Domain`, `Application`.
+- **`Infrastructure`** $\rightarrow$ `Application`.
+- **`Api`** $\rightarrow$ `Application` (không tham chiếu Infrastructure hay Persistence).
+- **`AppHost`** $\rightarrow$ `Domain`, `Application`, `Persistence`, `Infrastructure`, `Api` (đóng vai trò Composition Root duy nhất ráp nối DI).
 
-`Api` is a class library containing HTTP presentation code. `AppHost` is the ASP.NET Core entry point and composition root. Projects target .NET 10; folders are scaffolding only and contain no feature implementations yet.
+---
+
+## 3. Lệnh Phát triển & Kiểm thử (Developer Commands)
+
+### Khôi phục & Biên dịch
+```bash
+dotnet restore tillegal-be.slnx
+dotnet build tillegal-be.slnx
+```
+
+### Chạy Kiểm thử Tự động (Unit & Architecture Tests)
+```bash
+dotnet test tillegal-be.slnx
+```
+
+### Định dạng Mã nguồn Chuẩn hóa (.editorconfig)
+```bash
+dotnet format tillegal-be.slnx --verify-no-changes
+```
+
+### Khởi chạy Ứng dụng
+```bash
+# Thiết lập biến môi trường hoặc copy cấu hình mẫu
+cp src/Tillegal.AppHost/appsettings.Example.json src/Tillegal.AppHost/appsettings.Development.json
+
+# Chạy server
+dotnet run --project src/Tillegal.AppHost
+```
+
+- Swagger UI: `http://localhost:5063/swagger` hoặc `https://localhost:7001/swagger`
+- Liveness Probe: `http://localhost:5063/healthz`
+- Readiness Probe: `http://localhost:5063/readyz`

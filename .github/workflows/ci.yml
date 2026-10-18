@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-format-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore tillegal-be.slnx
+
+      - name: Verify formatting
+        run: dotnet format tillegal-be.slnx --verify-no-changes --no-restore
+
+      - name: Build
+        run: dotnet build tillegal-be.slnx --configuration Release --no-restore
+
+      - name: Run tests
+        run: dotnet test tillegal-be.slnx --configuration Release --no-build --verbosity normal

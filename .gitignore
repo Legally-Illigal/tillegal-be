@@ -60,6 +60,7 @@ ScaffoldingReadMe.txt
 *.tmp
 *.temp
 *.bak
+session-state/
 
 # Test results and coverage
 [Tt]est[Rr]esult*/
