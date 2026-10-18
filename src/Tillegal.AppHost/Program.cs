@@ -1,4 +1,4 @@
-﻿using Tillegal.Api.Middlewares;
+using Tillegal.Api.Middlewares;
 using Tillegal.AppHost.Configurations;
 using Tillegal.AppHost.Extensions;
 
@@ -8,6 +8,7 @@ builder.Logging.AddJsonConsole(options => options.IncludeScopes = true);
 builder.Services.AddApplicationServices(builder.Configuration);
 
 var app = builder.Build();
+app.UseForwardedHeaders();
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();

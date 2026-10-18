@@ -10,7 +10,7 @@ public static class DependencyInjection
         IConfiguration configuration)
     {
         services.AddApplicationLayer();
-        services.AddApiLayer();
+        services.AddApiLayer(configuration);
         services.AddDatabaseLayer(configuration);
         services.AddInfrastructureLayer(configuration);
         services.AddHealthCheckServices();
