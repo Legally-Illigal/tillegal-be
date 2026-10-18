@@ -1,8 +1,10 @@
-﻿using Tillegal.Persistence;
+﻿using Tillegal.Infrastructure;
+using Tillegal.Persistence;
 using Tillegal.Persistence.SeedData;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddPersistence(builder.Configuration);
+builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 
