@@ -11,7 +11,9 @@ public sealed class LoggingHandler(
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
-        var correlationId = Activity.Current?.TraceId.ToString() ?? correlationIdGenerator.Generate();
+        var correlationId = Activity.Current?.GetBaggageItem("correlationId")
+            ?? Activity.Current?.TraceId.ToString()
+            ?? correlationIdGenerator.Generate();
         request.Headers.TryAddWithoutValidation("X-Correlation-ID", correlationId);
 
         logger.LogInformation(

@@ -10,11 +10,7 @@ public sealed class RequestLoggingMiddleware(
 {
     public async Task InvokeAsync(HttpContext context)
     {
-        using var requestActivity = Activity.Current is null
-            ? new Activity("HTTP Request").SetIdFormat(ActivityIdFormat.W3C).Start()
-            : null;
-        var correlationId = Activity.Current!.TraceId.ToString();
-        context.Response.Headers["X-Correlation-ID"] = correlationId;
+        var correlationId = context.TraceIdentifier;
 
         using var scope = logger.BeginScope(new Dictionary<string, object>
         {
@@ -43,6 +39,16 @@ public sealed class RequestLoggingMiddleware(
                     "HTTP {Method} {Path} failed after {ElapsedMilliseconds} ms. CorrelationId: {CorrelationId}",
                     context.Request.Method,
                     context.Request.Path.Value,
+                    stopwatch.ElapsedMilliseconds,
+                    correlationId);
+            }
+            else if (context.Response.StatusCode >= StatusCodes.Status500InternalServerError)
+            {
+                logger.LogError(
+                    "HTTP {Method} {Path} responded with {StatusCode} in {ElapsedMilliseconds} ms. CorrelationId: {CorrelationId}",
+                    context.Request.Method,
+                    context.Request.Path.Value,
+                    context.Response.StatusCode,
                     stopwatch.ElapsedMilliseconds,
                     correlationId);
             }
