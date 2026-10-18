@@ -1,22 +1,16 @@
-﻿using Tillegal.Api;
-using Tillegal.Api.Middlewares;
-using Tillegal.Application;
-using Tillegal.Infrastructure;
-using Tillegal.Persistence;
-using Tillegal.Persistence.SeedData;
+﻿using Tillegal.Api.Middlewares;
+using Tillegal.AppHost.Configurations;
+using Tillegal.AppHost.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Logging.ClearProviders();
 builder.Logging.AddJsonConsole(options => options.IncludeScopes = true);
-builder.Services.AddApplication();
-builder.Services.AddApi();
-builder.Services.AddPersistence(builder.Configuration);
-builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddApplicationServices(builder.Configuration);
 
 var app = builder.Build();
 app.UseMiddleware<CorrelationIdMiddleware>();
-app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
@@ -26,12 +20,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapControllers();
+app.MapHealthCheckEndpoints();
 
-if (app.Environment.IsDevelopment())
-{
-    await using var scope = app.Services.CreateAsyncScope();
-    var seeder = scope.ServiceProvider.GetRequiredService<DevelopmentDatabaseSeeder>();
-    await seeder.SeedAsync();
-}
-
-app.Run();
+await app.ApplyDevelopmentDatabaseChangesAsync();
+await app.RunAsync();
