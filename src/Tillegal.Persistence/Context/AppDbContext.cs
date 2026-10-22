@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Tillegal.Application.Common.Interfaces;
 using Tillegal.Domain.Common;
+using Tillegal.Persistence.DataModels;
 
 namespace Tillegal.Persistence.Context;
 
@@ -10,6 +11,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     : DbContext(options), IUnitOfWork
 {
     private IDbContextTransaction? _currentTransaction;
+
+    public DbSet<RoleDataModel> Roles => Set<RoleDataModel>();
+    public DbSet<UserDataModel> Users => Set<UserDataModel>();
+    public DbSet<AuditLogDataModel> AuditLogs => Set<AuditLogDataModel>();
+    public DbSet<ConversationDataModel> Conversations => Set<ConversationDataModel>();
+    public DbSet<ConversationMessageDataModel> ConversationMessages => Set<ConversationMessageDataModel>();
+    public DbSet<UserAttachmentDataModel> UserAttachments => Set<UserAttachmentDataModel>();
+    public DbSet<AiEvaluationLogDataModel> AiEvaluationLogs => Set<AiEvaluationLogDataModel>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -74,6 +83,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     private void SetUpdatedTimestamps()
     {
         var now = DateTimeOffset.UtcNow;
+        foreach (var entry in ChangeTracker.Entries<BaseDataModel>())
+        {
+            if (entry.State == EntityState.Modified)
+            {
+                entry.Property(entity => entity.UpdatedAt).CurrentValue = now;
+            }
+        }
+
         foreach (var entry in ChangeTracker.Entries<BaseEntity>())
         {
             if (entry.State == EntityState.Modified)
@@ -87,7 +104,17 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     {
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
-            if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
+            if (typeof(BaseDataModel).IsAssignableFrom(entityType.ClrType))
+            {
+                var parameter = Expression.Parameter(entityType.ClrType, "entity");
+                var property = Expression.Property(parameter, nameof(BaseDataModel.DeletedAt));
+                var nullConstant = Expression.Constant(null, typeof(DateTimeOffset?));
+                var compare = Expression.Equal(property, nullConstant);
+                var lambda = Expression.Lambda(compare, parameter);
+
+                modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
+            }
+            else if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
             {
                 var parameter = Expression.Parameter(entityType.ClrType, "entity");
                 var property = Expression.Property(parameter, nameof(BaseEntity.DeletedAt));
