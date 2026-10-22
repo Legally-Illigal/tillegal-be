@@ -49,6 +49,8 @@ ScaffoldingReadMe.txt
 .env.*
 !.env.example
 !.env.template
+**/appsettings.Development.json
+**/appsettings.Production.json
 *.secrets.json
 *.local.json
 *.pfx
