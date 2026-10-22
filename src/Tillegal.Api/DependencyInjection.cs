@@ -127,6 +127,10 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
 
+        services.AddSingleton<AuditLogQueue>();
+        services.AddSingleton<IAuditLogService>(sp => sp.GetRequiredService<AuditLogQueue>());
+        services.AddHostedService<AuditLogBackgroundService>();
+
         var mappingConfiguration = ApiMappingConfiguration.Create();
         services.Replace(ServiceDescriptor.Singleton(mappingConfiguration));
         services.Replace(ServiceDescriptor.Scoped<IMapper, ServiceMapper>());

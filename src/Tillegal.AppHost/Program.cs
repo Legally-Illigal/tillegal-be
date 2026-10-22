@@ -16,6 +16,7 @@ app.UseMiddleware<RequestLoggingMiddleware>();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<AuditLogMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
