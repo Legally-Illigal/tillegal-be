@@ -22,6 +22,7 @@ public static class DependencyInjection
 
         services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
         services.AddScoped<IUnitOfWork>(serviceProvider => serviceProvider.GetRequiredService<AppDbContext>());
+        services.AddScoped<IDevelopmentDataSeed, ComprehensiveDatabaseDataSeed>();
         services.AddScoped<DevelopmentDatabaseSeeder>();
 
         return services;

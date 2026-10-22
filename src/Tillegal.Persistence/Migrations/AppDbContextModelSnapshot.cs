@@ -183,6 +183,9 @@ namespace Tillegal.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<JsonDocument>("Citations")
+                        .HasColumnType("jsonb");
+
                     b.Property<string>("Content")
                         .IsRequired()
                         .HasColumnType("text");
