@@ -19,4 +19,34 @@ public sealed class User
     public string? PasswordHash { get; set; }
 
     public string? PhoneNumber { get; set; }
+
+    public Role? Role { get; set; }
+
+    public User()
+    {
+    }
+
+    public User(
+        Guid id,
+        Guid roleId,
+        string fullName,
+        string? userName,
+        string? email,
+        string? passwordHash,
+        string? phoneNumber,
+        DateTimeOffset createdAt,
+        DateTimeOffset? lastActiveAt,
+        Role? role = null)
+    {
+        Id = id;
+        RoleId = roleId;
+        FullName = fullName;
+        UserName = userName;
+        Email = email;
+        PasswordHash = passwordHash;
+        PhoneNumber = phoneNumber;
+        CreatedAt = createdAt;
+        LastActiveAt = lastActiveAt;
+        Role = role;
+    }
 }
