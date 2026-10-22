@@ -1,7 +1,7 @@
 using MediatR;
 using Tillegal.Application.Common.Exceptions;
 using Tillegal.Application.Common.Interfaces;
-using Tillegal.Application.Features.Auth.Commands.Login;
+using Tillegal.Application.Features.Auth.DTOs;
 
 namespace Tillegal.Application.Features.Auth.Queries.GetCurrentUser;
 

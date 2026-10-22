@@ -4,6 +4,7 @@ using Tillegal.Application.Common.Exceptions;
 using Tillegal.Application.Common.Interfaces;
 using Tillegal.Application.Common.Models;
 using Tillegal.Application.Features.Auth.Commands.Login;
+using Tillegal.Application.Features.Auth.DTOs;
 using Tillegal.Domain.Entities;
 
 namespace Tillegal.Application.UnitTests.Features.Auth.Commands.Login;
@@ -32,7 +33,7 @@ public sealed class LoginCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WithValidCredentials_ReturnsExpectedLoginResponse_AndRecordsAuditLog()
+    public async Task Handle_WithValidCredentials_ReturnsExpectedAuthDto_AndRecordsAuditLog()
     {
         // Arrange
         var userId = Guid.NewGuid();

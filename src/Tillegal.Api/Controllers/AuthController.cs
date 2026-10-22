@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Tillegal.Api.Contracts.Requests;
+using Tillegal.Api.Contracts.Responses;
 using Tillegal.Application.Features.Auth.Commands.Login;
 using Tillegal.Application.Features.Auth.Queries.GetCurrentUser;
 
@@ -30,8 +31,8 @@ public sealed class AuthController(ISender mediator, IMapper mapper)
     {
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
         var command = new LoginCommand(request.EmailOrUserName, request.Password, ipAddress);
-        var response = await Mediator.Send(command, cancellationToken);
-        return Ok(response);
+        var result = await Mediator.Send(command, cancellationToken);
+        return Ok(Mapper.Map<LoginResponse>(result));
     }
 
     /// <summary>
@@ -39,12 +40,12 @@ public sealed class AuthController(ISender mediator, IMapper mapper)
     /// </summary>
     [HttpGet("me")]
     [Authorize]
-    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(UserResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<UserDto>> GetCurrentUser(CancellationToken cancellationToken)
+    public async Task<ActionResult<UserResponse>> GetCurrentUser(CancellationToken cancellationToken)
     {
-        var response = await Mediator.Send(new GetCurrentUserQuery(), cancellationToken);
-        return Ok(response);
+        var result = await Mediator.Send(new GetCurrentUserQuery(), cancellationToken);
+        return Ok(Mapper.Map<UserResponse>(result));
     }
 }

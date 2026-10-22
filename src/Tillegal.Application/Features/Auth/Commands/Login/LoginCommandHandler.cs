@@ -2,6 +2,7 @@ using System.Text.Json;
 using MediatR;
 using Tillegal.Application.Common.Exceptions;
 using Tillegal.Application.Common.Interfaces;
+using Tillegal.Application.Features.Auth.DTOs;
 using Tillegal.Domain.Entities;
 
 namespace Tillegal.Application.Features.Auth.Commands.Login;
@@ -12,9 +13,9 @@ public sealed class LoginCommandHandler(
     IPasswordHashingService passwordHashingService,
     IJwtTokenGenerator jwtTokenGenerator,
     IDateTimeProvider dateTimeProvider,
-    IUnitOfWork unitOfWork) : IRequestHandler<LoginCommand, LoginResponse>
+    IUnitOfWork unitOfWork) : IRequestHandler<LoginCommand, AuthDto>
 {
-    public async Task<LoginResponse> Handle(LoginCommand request, CancellationToken cancellationToken)
+    public async Task<AuthDto> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
         var user = await userRepository.FindByEmailOrUserNameAsync(request.EmailOrUserName, cancellationToken);
         if (user is null ||
@@ -46,7 +47,7 @@ public sealed class LoginCommandHandler(
 
         var tokenResult = jwtTokenGenerator.GenerateToken(user);
 
-        return new LoginResponse(
+        return new AuthDto(
             tokenResult.AccessToken,
             "Bearer",
             tokenResult.ExpiresIn,
