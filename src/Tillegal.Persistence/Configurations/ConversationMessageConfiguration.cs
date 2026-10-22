@@ -33,6 +33,9 @@ public sealed class ConversationMessageConfiguration : IEntityTypeConfiguration<
             .HasColumnType("text")
             .IsRequired();
 
+        builder.Property(m => m.Citations)
+            .HasColumnType("jsonb");
+
         // Indexes
         builder.HasIndex(m => m.ConversationId)
             .HasDatabaseName("IX_ConversationMessages_ConversationId");

@@ -10,7 +10,8 @@ public static class MigrationExtensions
         this WebApplication app,
         CancellationToken cancellationToken = default)
     {
-        if (!app.Environment.IsDevelopment())
+        // Seeder only executes on Development or Staging, never on Production
+        if (!app.Environment.IsDevelopment() && !app.Environment.IsEnvironment("Staging"))
         {
             return app;
         }
