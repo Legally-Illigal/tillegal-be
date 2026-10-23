@@ -19,6 +19,8 @@ This documentation hub provides architectural, technical, operational, and API s
   - [`setup-and-workflow.md`](file:///c:/Users/Asus/Desktop/Tillegal/tillegal-be/docs/development/setup-and-workflow.md): Local environment setup, dotnet CLI commands, and database migration/seeding.
   - [`conventions.md`](file:///c:/Users/Asus/Desktop/Tillegal/tillegal-be/docs/development/conventions.md): Code conventions, entity design patterns, CQRS rules, and testing principles.
   - [`status-and-roadmap.md`](file:///c:/Users/Asus/Desktop/Tillegal/tillegal-be/docs/development/status-and-roadmap.md): Current implementation state and upcoming modules.
+  - [`backend-feature-backlog.md`](file:///c:/Users/Asus/Desktop/Tillegal/tillegal-be/docs/development/backend-feature-backlog.md): Backend feature inventory, Backend/AI Service responsibilities, and evidence-based feature status.
+  - [`agent-worklog.md`](file:///c:/Users/Asus/Desktop/Tillegal/tillegal-be/docs/development/agent-worklog.md): Concise task progress and handoff history for agents.
 
 - [api/](file:///c:/Users/Asus/Desktop/Tillegal/tillegal-be/docs/api/) — API contracts and integration protocols.
   - [`overview.md`](file:///c:/Users/Asus/Desktop/Tillegal/tillegal-be/docs/api/overview.md): Base URL, routing conventions, rate limiting, and health probes (`/healthz`, `/readyz`).

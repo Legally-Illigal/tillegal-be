@@ -26,6 +26,13 @@ Help maintain this repository safely and consistently. Treat repository files an
 - If a check cannot be run, state why and what remains unverified.
 - Review the final diff for scope, correctness, accidental files, and secrets.
 
+## Task Status & Handoff
+- Use `docs/development/backend-feature-backlog.md` as the high-level backend feature inventory and ownership boundary; its entries are feature-level scope, not implementation subtasks.
+- For every task that changes repository content, append a concise entry to `docs/development/agent-worklog.md` before handoff. Record completed work, changed paths, checks actually run, remaining work/blockers, and the next action if unfinished.
+- Update a feature's backlog status only after checking the relevant implementation and tests. Record what evidence was checked; do not infer completion from scaffolding or documentation.
+- At the start of a related follow-up, read the backlog and latest work-log entry, then inspect only the relevant code/tests/docs. Preserve older log entries and pre-existing user changes.
+- Keep work-log entries concise and factual; never claim unfinished work is complete.
+
 ## Completion report
 Summarize:
 1. What changed and why.
