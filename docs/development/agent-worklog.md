@@ -92,3 +92,11 @@ Use this file as a concise handoff record, not as a transcript. Append an entry 
   - Migration files still reference the `UserName` column (auto-generated, not causing build errors). Generate a new migration to drop the column when ready to apply schema changes.
   - The pre-existing SeederVerificationTests failure should be investigated separately (database state mismatch).
 
+
+## 2026-10-24 — Add TRUNCATE before seed to clear all tables
+
+- **Status:** Completed.
+- **Completed:** Added `ClearAllTablesAsync` to `DevelopmentDatabaseSeeder` that runs `TRUNCATE TABLE ... CASCADE` on all EF Core-managed tables before invoking the individual `IDevelopmentDataSeed` implementations. This ensures seed data is always inserted fresh (no stale rows from prior runs). The constructor now also takes `AppDbContext` (already registered in DI).
+- **Changed paths:** `src/Tillegal.Persistence/SeedData/DevelopmentDatabaseSeeder.cs`.
+- **Checks run:** `dotnet build` — 0 warnings, 0 errors. `dotnet test` — 26/26 unit tests passed; 1 architecture test (`SeederVerificationTests.Seed_Should_HaveSeededExpectedCounts_And_BeIdempotent`) failed on audit log count (expected 30, found 31) — this is a pre-existing issue unrelated to this change (likely an extra audit log from the running app's middleware).
+- **Next action:** None required for this task. The pre-existing `SeederVerificationTests` count mismatch should be investigated separately.
