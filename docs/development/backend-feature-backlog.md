@@ -1,4 +1,4 @@
-# Backend Feature Backlog
+﻿# Backend Feature Backlog
 
 ## Purpose and status rules
 
@@ -19,7 +19,7 @@ Do not split these feature entries into child implementation tasks unless the us
 
 | ID | Tính năng | Phạm vi chính | Trạng thái |
 |---|---|---|---|
-| BE-F01 | Quản lý tài khoản | Đăng ký, đăng nhập, đăng xuất và quản lý phiên xác thực người dùng. | Chưa đánh giá |
+| BE-F01 | Quản lý tài khoản | Đăng ký, đăng nhập, đăng xuất và quản lý phiên xác thực người dùng. | Một phần |
 | BE-F02 | Xác thực và phân quyền | Xác thực danh tính, kiểm soát quyền truy cập theo vai trò và quyền sở hữu dữ liệu. | Chưa đánh giá |
 | BE-F03 | Quản lý hội thoại | Tạo, xem, cập nhật và quản lý các cuộc hội thoại của người dùng. | Chưa đánh giá |
 | BE-F04 | Quản lý tin nhắn và lịch sử | Lưu trữ, truy xuất tin nhắn và cung cấp ngữ cảnh hội thoại cho các lượt trao đổi tiếp theo. | Chưa đánh giá |

@@ -2,7 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Tillegal.Application.Common.Interfaces;
+using Tillegal.Domain.Interfaces.Repositories;
 using Tillegal.Persistence.Context;
+using Tillegal.Persistence.Repositories;
 using Tillegal.Persistence.SeedData;
 using Tillegal.Persistence.Services;
 
@@ -23,6 +25,7 @@ public static class DependencyInjection
 
         services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
         services.AddScoped<IUnitOfWork>(serviceProvider => serviceProvider.GetRequiredService<AppDbContext>());
+        services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IAuditLogWriter, DbAuditLogWriter>();
         services.AddScoped<IDevelopmentDataSeed, ComprehensiveDatabaseDataSeed>();
         services.AddScoped<DevelopmentDatabaseSeeder>();
