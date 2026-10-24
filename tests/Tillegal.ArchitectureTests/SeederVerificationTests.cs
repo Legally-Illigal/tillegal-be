@@ -46,6 +46,13 @@ public sealed class SeederVerificationTests
     {
         await using var dbContext = CreateDbContext();
 
+        // --- BƯỚC THÊM MỚI: Reset DB và chạy lại Seed trước khi Test ---
+        await dbContext.Database.EnsureDeletedAsync();
+        await dbContext.Database.EnsureCreatedAsync();
+        var initialSeeder = new ComprehensiveDatabaseDataSeed(dbContext);
+        await initialSeeder.SeedAsync();
+        // -------------------------------------------------------------
+
         // 1. Verify Roles (3 records)
         var roles = await dbContext.Roles.ToListAsync();
         roles.Should().HaveCount(3);
