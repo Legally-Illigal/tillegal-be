@@ -29,9 +29,6 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<UserDataModel>
         builder.Property(u => u.DeletedAt)
             .HasColumnType("timestamp with time zone");
 
-        builder.Property(u => u.UserName)
-            .HasColumnType("text");
-
         builder.Property(u => u.Email)
             .HasColumnType("text");
 

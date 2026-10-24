@@ -8,8 +8,6 @@
   <ItemGroup>
     <Folder Include="Controllers\" />
     <Folder Include="Contracts\" />
-    <Folder Include="Contracts\Requests\" />
-    <Folder Include="Contracts\Responses\" />
     <Folder Include="Middlewares\" />
     <Folder Include="Filters\" />
     <Folder Include="Services\" />
