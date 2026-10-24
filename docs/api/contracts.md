@@ -14,6 +14,16 @@ namespace Tillegal.Api.Controllers;
 public sealed class DocumentsController(ISender mediator, IMapper mapper)
     : BaseApiController(mediator, mapper)
 {
+    [HttpPost]
+    public async Task<ActionResult<CreateDocumentResponse>> Create(
+        [FromBody] CreateDocumentRequest request,
+        CancellationToken ct)
+    {
+        var command = Mapper.Map<CreateDocumentCommand>(request);
+        var result = await Mediator.Send(command, ct);
+        return Ok(Mapper.Map<CreateDocumentResponse>(result));
+    }
+
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<DocumentResponse>> GetById(Guid id, CancellationToken ct)
     {

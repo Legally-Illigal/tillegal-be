@@ -19,7 +19,7 @@ HTTP Client
    ▼
 2. Presentation (`Tillegal.Api`):
    └── Controller inherits `BaseApiController`
-       └── Maps the incoming DTO to a MediatR command/query
+       └── Maps incoming API request contract to MediatR command/query via Mapster (`IMapper`)
        └── Dispatches through `ISender.Send`
    │
    ▼
@@ -30,12 +30,13 @@ HTTP Client
    └── Request handler (`IRequestHandler<TRequest, TResponse>`)
          ├── Orchestrates the application use case
          ├── Calls domain services for domain rules; it does not use EF Core directly
+         ├── Uses Mapster (`IMapper`) to project Domain entities to Application Result DTOs
          └── Uses application ports for technical services and persistence coordination
    │
    ▼
 4. Domain (`Tillegal.Domain`):
    └── Domain services enforce domain policies and call domain repository contracts
-       └── Repository contracts are declared in `Domain`; domain code has no EF Core dependency
+       └── Repository contracts are declared in `Domain`; domain code has no EF Core or Mapster dependency
    │
    ▼
 5. Persistence (`Tillegal.Persistence`):
@@ -46,7 +47,7 @@ HTTP Client
    │
    ▼
 6. Response:
-   └── Handler returns a result DTO -> Controller returns an `ActionResult` -> HTTP response
+   └── Handler returns result DTO -> Controller maps result DTO to API response contract via Mapster (`IMapper`) -> Returns `ActionResult` -> HTTP response
 ```
 
 ## Login Request Flow (Target)

@@ -30,8 +30,24 @@ This document outlines implementation patterns, conventions, and design standard
 - **Validation**:
   - All commands and queries must have accompanying FluentValidation rules where inputs require validation.
   - Validation failures are automatically caught by `ValidationBehavior` and converted to `ValidationException`.
-- **Data Mapping**:
-  - Configure object transformations using **Mapster** in `MappingConfiguration.cs` or feature-specific configs. Inject `IMapper` where needed.
+- **Data Mapping Conventions (Mapster)**:
+  - **API Layer <-> Application Layer**:
+    - Controllers inheriting from `BaseApiController` must utilize `Mapper` (`IMapper`) for object transformations rather than manual instantiations.
+    - Incoming: Transform API Request contract to MediatR Command/Query (`Mapper.Map<SomeCommand>(request)`).
+    - Outgoing: Transform MediatR Result DTO to API Response contract (`Mapper.Map<SomeApiResponse>(result)`).
+    - API-level mapping configurations implementing `IRegister` belong in `Tillegal.Api/Mappings/{Feature}ApiMappingConfig.cs`.
+  - **Application Layer <-> Domain Layer**:
+    - Application Handlers inject `IMapper mapper` to project Domain Entities/Models to Application Result DTOs (`mapper.Map<SomeResultDto>(entity)`).
+    - **Strict Boundary Rule**: `Tillegal.Domain` must **NEVER** reference Mapster or any external mapping library. Domain entities preserve their own encapsulation, business rules, and constructors.
+    - All configurations mapping between Domain Entities and Application DTOs belong strictly inside `Tillegal.Application/Features/{Feature}/Mappings/{Feature}MappingConfig.cs` implementing `IRegister`.
+  - **Auto-Discovery via `IRegister`**:
+    - DI setup calls `configuration.Scan(...)` for assemblies (`Tillegal.Application` and `Tillegal.Api`). Any class implementing `IRegister` is automatically registered.
+  - **Feature Implementation Checklist**:
+    1. Define API Request & Response contracts in `Tillegal.Api/Contracts/{Feature}/`.
+    2. Define CQRS Command/Query, Validator, and Result DTOs in `Tillegal.Application/Features/{Feature}/...`.
+    3. Configure API <-> Application mappings via `IRegister` in `Tillegal.Api/Mappings/{Feature}ApiMappingConfig.cs`.
+    4. In Controller, map incoming request to command/query and outgoing result to response using `Mapper.Map<T>()`.
+    5. In Application Handler, inject `IMapper` and map Domain entities to Result DTOs; define domain-to-DTO mappings via `IRegister` in `Tillegal.Application/Features/{Feature}/Mappings/{Feature}MappingConfig.cs`.
 
 ## Domain Services & Repository Contracts
 
