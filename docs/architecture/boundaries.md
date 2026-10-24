@@ -34,9 +34,15 @@ Tillegal Backend strictly enforces the Dependency Inversion Principle and Clean 
 2. **Application Layer Rules**:
    - `Application` depends exclusively on `Domain`.
    - Forbidden to reference `Persistence`, `Infrastructure`, or `Api`.
-   - Defines interfaces (ports) for persistence and external adapters without knowing implementations.
+   - Defines ports for technical services used by application handlers (for example, password hashing, JWT generation, and `IUnitOfWork`) without knowing their implementations.
+   - Does not own repository contracts for domain services or aggregates; those contracts are declared in `Domain`.
 
-3. **Adapter Isolation**:
+3. **Domain Service and Repository Ownership**:
+   - Domain services live in `Domain` and may depend only on domain entities/value objects and repository contracts declared in `Domain`.
+   - Domain repository contracts belong under `Domain/Interfaces/Repositories`; their EF Core implementations belong in `Persistence/Repositories`.
+   - Application handlers orchestrate the use case by calling domain services. They must not bypass those services by calling EF Core or a concrete repository.
+
+4. **Adapter Isolation**:
    - `Persistence` may only reference `Domain` and `Application`.
    - `Persistence` must NOT reference `Infrastructure` or `Api`.
    - `Infrastructure` may only reference `Application` (and `Domain` transitively).
@@ -44,7 +50,7 @@ Tillegal Backend strictly enforces the Dependency Inversion Principle and Clean 
    - `Api` may only reference `Application`.
    - `Api` must NOT directly reference `Infrastructure` or `Persistence`.
 
-4. **Single Composition Root**:
+5. **Single Composition Root**:
    - `AppHost` is the sole assembly authorized to reference all layers in order to register services into the DI container (`src/Tillegal.AppHost/Configurations/`).
 
 ## Verification via NetArchTest

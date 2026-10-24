@@ -33,6 +33,13 @@ This document outlines implementation patterns, conventions, and design standard
 - **Data Mapping**:
   - Configure object transformations using **Mapster** in `MappingConfiguration.cs` or feature-specific configs. Inject `IMapper` where needed.
 
+## Domain Services & Repository Contracts
+
+- Put domain services and domain-owned repository contracts in `Tillegal.Domain`. A domain service applies domain rules and calls a repository contract; it must not reference EF Core or an outer project.
+- Declare domain repository contracts under `Domain/Interfaces/Repositories` and implement them in `Tillegal.Persistence/Repositories` using EF Core. Keep persistence mapping between database models and domain entities inside Persistence.
+- Application handlers orchestrate commands/queries by calling Domain services; do not define an Application repository interface for a repository that belongs to the domain or access `AppDbContext` directly.
+- Keep ports for technical capabilities used directly by Application handlers (for example, password hashing and JWT generation) in Application; implement those ports in Infrastructure.
+
 ## Error Handling & Exceptions
 
 - Use explicit domain/application exceptions rather than returning ad-hoc error codes:

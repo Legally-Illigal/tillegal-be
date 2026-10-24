@@ -1,6 +1,6 @@
 # Implementation Status & Roadmap
 
-This document outlines the current technical readiness of `tillegal-be` and pending implementation milestones.
+This document outlines the current technical readiness of `tillegal-be` and pending implementation milestones. The system-level feature inventory and Backend/AI Service responsibility boundary are maintained in [`backend-feature-backlog.md`](backend-feature-backlog.md); task handoffs are recorded in [`agent-worklog.md`](agent-worklog.md). Feature statuses in the backlog must be verified against implementation and tests before being changed.
 
 ## Current Baseline Status (Completed)
 

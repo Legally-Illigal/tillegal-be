@@ -6,14 +6,16 @@ Tillegal Backend is built on **.NET 10** using **Clean Architecture** and **Doma
 
 1. **`Tillegal.Domain` (Enterprise Business Rules)**
    - Innermost core, completely independent of frameworks and outer layers.
-   - Contains domain entities deriving from `BaseEntity` (utilizing Guid v7), `IAggregateRoot` markers, and domain exceptions (`DomainException`).
-   - Pure business invariants and state mutation methods.
+   - Contains domain entities deriving from `BaseEntity` (utilizing Guid v7), `IAggregateRoot` markers, domain exceptions (`DomainException`), and domain services.
+   - Owns repository contracts required by domain services/aggregates under `Domain/Interfaces/Repositories`; these contracts return domain concepts and contain no EF Core types.
+   - Domain services apply business rules and call these domain-owned repository contracts; they do not depend on Application, Persistence, Infrastructure, or Api.
 
 2. **`Tillegal.Application` (Application Business Rules)**
    - Orchestrates use cases via CQRS with **MediatR**.
    - Contains Commands, Queries, Handlers, FluentValidation validators, and Mapster mapping configurations.
    - Cross-cutting pipeline behaviors: `LoggingBehavior<TRequest, TResponse>`, `ValidationBehavior<TRequest, TResponse>`.
-   - Defines interfaces for outer ports: `IUnitOfWork`, `ICacheService`, `IEmailService`, `IStorageService`, `ICurrentUserService`, `IDateTimeProvider`, `IPasswordHashingService`.
+   - Defines ports for technical capabilities used by handlers, such as `IUnitOfWork`, `ICacheService`, `IEmailService`, `IStorageService`, `ICurrentUserService`, `IDateTimeProvider`, and `IPasswordHashingService`.
+   - A domain repository contract is not an Application port: handlers call Domain services, which use the repository contracts owned by Domain.
 
 3. **`Tillegal.Persistence` (Data Access Adapter)**
    - Implements data persistence using **Entity Framework Core** with **PostgreSQL**.
