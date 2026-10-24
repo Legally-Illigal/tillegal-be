@@ -20,14 +20,9 @@ public sealed class AuthController(ISender mediator, IMapper mapper) : BaseApiCo
         [FromBody] RegisterApiRequest request,
         CancellationToken cancellationToken)
     {
-        var command = new RegisterCommand(
-            Email: request.Email,
-            Password: request.Password,
-            FullName: request.FullName,
-            PhoneNumber: request.PhoneNumber);
-
+        var command = Mapper.Map<RegisterCommand>(request);
         var result = await Mediator.Send(command, cancellationToken);
-        var response = new RegisterApiResponse(result.Message, result.ExpirationMinutes);
+        var response = Mapper.Map<RegisterApiResponse>(result);
 
         return Ok(response);
     }
@@ -39,9 +34,9 @@ public sealed class AuthController(ISender mediator, IMapper mapper) : BaseApiCo
         [FromBody] VerifyRegistrationApiRequest request,
         CancellationToken cancellationToken)
     {
-        var command = new VerifyRegistrationCommand(request.Email, request.Otp);
+        var command = Mapper.Map<VerifyRegistrationCommand>(request);
         var result = await Mediator.Send(command, cancellationToken);
-        var response = new VerifyRegistrationApiResponse(result.UserId, result.Email, result.FullName, result.Message);
+        var response = Mapper.Map<VerifyRegistrationApiResponse>(result);
 
         return Ok(response);
     }
@@ -53,9 +48,9 @@ public sealed class AuthController(ISender mediator, IMapper mapper) : BaseApiCo
         [FromBody] ResendOtpApiRequest request,
         CancellationToken cancellationToken)
     {
-        var command = new ResendOtpCommand(request.Email);
+        var command = Mapper.Map<ResendOtpCommand>(request);
         var result = await Mediator.Send(command, cancellationToken);
-        var response = new ResendOtpApiResponse(result.Message, result.ExpirationMinutes);
+        var response = Mapper.Map<ResendOtpApiResponse>(result);
 
         return Ok(response);
     }

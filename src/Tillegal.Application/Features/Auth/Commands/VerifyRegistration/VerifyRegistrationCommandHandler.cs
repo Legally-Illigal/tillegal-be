@@ -1,4 +1,5 @@
 using System.Text.Json;
+using MapsterMapper;
 using MediatR;
 using Tillegal.Application.Common.Interfaces;
 using Tillegal.Application.Features.Auth.Models;
@@ -10,7 +11,8 @@ namespace Tillegal.Application.Features.Auth.Commands.VerifyRegistration;
 public sealed class VerifyRegistrationCommandHandler(
     AuthService authService,
     ICacheService cacheService,
-    IUnitOfWork unitOfWork) : IRequestHandler<VerifyRegistrationCommand, VerifyRegistrationResult>
+    IUnitOfWork unitOfWork,
+    IMapper mapper) : IRequestHandler<VerifyRegistrationCommand, VerifyRegistrationResult>
 {
     public async Task<VerifyRegistrationResult> Handle(
         VerifyRegistrationCommand request,
@@ -50,10 +52,6 @@ public sealed class VerifyRegistrationCommandHandler(
         // Remove from cache
         await cacheService.RemoveAsync(cacheKey, cancellationToken);
 
-        return new VerifyRegistrationResult(
-            UserId: createdUser.Id,
-            Email: createdUser.Email ?? pendingRegistration.Email,
-            FullName: createdUser.FullName,
-            Message: "Account registration and verification completed successfully.");
+        return mapper.Map<VerifyRegistrationResult>(createdUser);
     }
 }

@@ -100,3 +100,33 @@ Use this file as a concise handoff record, not as a transcript. Append an entry 
 - **Changed paths:** `src/Tillegal.Persistence/SeedData/DevelopmentDatabaseSeeder.cs`.
 - **Checks run:** `dotnet build` — 0 warnings, 0 errors. `dotnet test` — 26/26 unit tests passed; 1 architecture test (`SeederVerificationTests.Seed_Should_HaveSeededExpectedCounts_And_BeIdempotent`) failed on audit log count (expected 30, found 31) — this is a pre-existing issue unrelated to this change (likely an extra audit log from the running app's middleware).
 - **Next action:** None required for this task. The pre-existing `SeederVerificationTests` count mismatch should be investigated separately.
+
+## 2026-10-24 — Integrate Mapster across API, Application, and Domain layers; update conventions documentation
+
+- **Status:** Completed.
+- **Completed:**
+  - Updated documentation (`docs/development/conventions.md`, `docs/architecture/data-flow.md`, `docs/api/contracts.md`) with explicit guidelines for Mapster integration:
+    - API <-> Application: Controllers use `Mapper.Map<...>` to map API requests to MediatR commands/queries, and MediatR results to API responses. Configured via `IRegister` in `Tillegal.Api/Mappings/`.
+    - Application <-> Domain: Application handlers use `IMapper` to map Domain entities to Application result DTOs. Configured via `IRegister` in `Tillegal.Application/Features/{Feature}/Mappings/`. Domain remains completely free of external mapping libraries.
+    - Added step-by-step feature implementation checklist for data mapping.
+  - Refactored user registration flow to use Mapster:
+    - Added `AuthApiMappingConfig` in `src/Tillegal.Api/Mappings/` for `Register`, `VerifyRegistration`, and `ResendOtp` request/response contracts.
+    - Updated `AuthController` to use `Mapper.Map<...>` on all registration endpoints (`Register`, `VerifyRegistration`, `ResendOtp`).
+    - Added `AuthMappingConfig` in `src/Tillegal.Application/Features/Auth/Mappings/` to map `User` domain entity to `VerifyRegistrationResult`.
+    - Injected `IMapper` into `VerifyRegistrationCommandHandler` and replaced manual record instantiation with `mapper.Map<VerifyRegistrationResult>(createdUser)`.
+    - Added unit tests `AuthMappingTests` verifying Mapster mappings, and updated `VerifyRegistrationCommandHandlerTests` with real Mapster mapper.
+- **Changed paths:**
+  - `docs/development/conventions.md`
+  - `docs/architecture/data-flow.md`
+  - `docs/api/contracts.md`
+  - `docs/development/agent-worklog.md`
+  - `src/Tillegal.Api/Mappings/AuthApiMappingConfig.cs`
+  - `src/Tillegal.Api/Controllers/AuthController.cs`
+  - `src/Tillegal.Application/Features/Auth/Mappings/AuthMappingConfig.cs`
+  - `src/Tillegal.Application/Features/Auth/Commands/VerifyRegistration/VerifyRegistrationCommandHandler.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Auth/AuthMappingTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Auth/VerifyRegistrationCommandHandlerTests.cs`
+- **Checks run:**
+  - `dotnet test tillegal-be.slnx`: 28/28 unit tests passed, 7/7 architecture tests passed.
+  - `dotnet format tillegal-be.slnx --verify-no-changes`: Passed with 0 formatting discrepancies.
+- **Next action:** None for this task.
