@@ -3,12 +3,12 @@ using System.Text.Json;
 using MediatR;
 using Tillegal.Application.Common.Interfaces;
 using Tillegal.Application.Features.Auth.Models;
-using Tillegal.Domain.Services;
+using Tillegal.Domain.Interfaces.Services;
 
 namespace Tillegal.Application.Features.Auth.Commands.Register;
 
 public sealed class RegisterCommandHandler(
-    AuthService authService,
+    IAuthService authService,
     IPasswordHashingService passwordHashingService,
     ICacheService cacheService,
     IEmailService emailService,

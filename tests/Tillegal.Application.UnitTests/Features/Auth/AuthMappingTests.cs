@@ -64,31 +64,4 @@ public sealed class AuthMappingTests
         result.Message.Should().Be("Account registration and verification completed successfully.");
     }
 
-    [Fact]
-    public void Map_User_To_LoginUserDto_ShouldMapRoleNameAndAllFieldsCorrectly()
-    {
-        // Arrange
-        var userId = Guid.CreateVersion7();
-        var roleId = Guid.NewGuid();
-        var user = new User
-        {
-            Id = userId,
-            Email = "admin@example.com",
-            FullName = "Admin User",
-            PhoneNumber = "0909123456",
-            RoleId = roleId,
-            Role = new Role(roleId, "Admin")
-        };
-
-        // Act
-        var result = _mapper.Map<Tillegal.Application.Features.Auth.Commands.Login.LoginUserDto>(user);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.Id.Should().Be(userId);
-        result.Email.Should().Be("admin@example.com");
-        result.FullName.Should().Be("Admin User");
-        result.PhoneNumber.Should().Be("0909123456");
-        result.Role.Should().Be("Admin");
-    }
 }

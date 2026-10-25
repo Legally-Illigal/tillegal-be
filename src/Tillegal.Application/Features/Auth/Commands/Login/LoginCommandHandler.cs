@@ -2,12 +2,13 @@ using MapsterMapper;
 using MediatR;
 using Tillegal.Application.Common.Exceptions;
 using Tillegal.Application.Common.Interfaces;
-using Tillegal.Domain.Services;
+using Tillegal.Application.Features.Auth.Mappings;
+using Tillegal.Domain.Interfaces.Services;
 
 namespace Tillegal.Application.Features.Auth.Commands.Login;
 
 public sealed class LoginCommandHandler(
-    AuthService authService,
+    IAuthService authService,
     IPasswordHashingService passwordHashingService,
     IJwtTokenGenerator jwtTokenGenerator,
     IMapper mapper) : IRequestHandler<LoginCommand, LoginResult>
@@ -30,12 +31,7 @@ public sealed class LoginCommandHandler(
 
         var roleName = user.Role?.Name ?? "User";
         var tokenResult = jwtTokenGenerator.GenerateToken(user, roleName);
-        var userDto = mapper.Map<LoginUserDto>(user);
 
-        return new LoginResult(
-            AccessToken: tokenResult.Token,
-            TokenType: "Bearer",
-            ExpiresIn: tokenResult.ExpiresInSeconds,
-            User: userDto);
+        return mapper.Map<LoginResult>(new LoginResultMappingSource(user, tokenResult));
     }
 }
