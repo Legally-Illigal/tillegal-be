@@ -1,5 +1,5 @@
-using Tillegal.Domain.Entities;
 using Tillegal.Application.Common.Models;
+using Tillegal.Domain.Entities;
 
 namespace Tillegal.Application.Common.Interfaces;
 

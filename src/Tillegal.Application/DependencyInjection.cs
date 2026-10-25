@@ -19,6 +19,7 @@ public static class DependencyInjection
         services.AddSingleton(mappingConfiguration);
         services.AddScoped<IMapper, ServiceMapper>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<ConversationService>();
         services.AddMediatR(configuration =>
         {
             configuration.RegisterServicesFromAssembly(applicationAssembly);

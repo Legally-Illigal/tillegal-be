@@ -63,5 +63,4 @@ public sealed class AuthMappingTests
         result.FullName.Should().Be("No Email User");
         result.Message.Should().Be("Account registration and verification completed successfully.");
     }
-
 }

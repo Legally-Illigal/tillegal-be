@@ -45,6 +45,9 @@ public static class InfrastructureExtensions
                 "JWT SigningKey must be at least 32 characters long.")
             .ValidateOnStart();
 
+        services.AddOptions<AiServiceOptions>()
+            .Bind(configuration.GetSection(AiServiceOptions.SectionName));
+
         services.AddOptions<GoogleAuthOptions>()
             .Bind(configuration.GetSection(GoogleAuthOptions.SectionName))
             .Validate(options => !string.IsNullOrWhiteSpace(options.ClientId), "Google OAuth client ID is required.")
