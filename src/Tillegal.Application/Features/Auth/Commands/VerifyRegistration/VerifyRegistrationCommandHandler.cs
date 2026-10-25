@@ -4,12 +4,12 @@ using MediatR;
 using Tillegal.Application.Common.Interfaces;
 using Tillegal.Application.Features.Auth.Models;
 using Tillegal.Domain.Exceptions;
-using Tillegal.Domain.Services;
+using Tillegal.Domain.Interfaces.Services;
 
 namespace Tillegal.Application.Features.Auth.Commands.VerifyRegistration;
 
 public sealed class VerifyRegistrationCommandHandler(
-    AuthService authService,
+    IAuthService authService,
     ICacheService cacheService,
     IUnitOfWork unitOfWork,
     IMapper mapper) : IRequestHandler<VerifyRegistrationCommand, VerifyRegistrationResult>

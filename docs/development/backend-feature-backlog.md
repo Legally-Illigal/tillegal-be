@@ -44,7 +44,7 @@ Do not split these feature entries into child implementation tasks unless the us
 
 ## Explicitly out of scope until confirmed
 
-The current feature inventory does not include file uploads, OAuth login, payments, or streaming. Do not add these to implementation scope without an explicit requirement or approved product decision.
+The current feature inventory does not include file uploads, payments, or streaming. Google account registration and login are implemented following explicit user requests; other OAuth providers remain out of scope.
 
 ## Agent workflow
 

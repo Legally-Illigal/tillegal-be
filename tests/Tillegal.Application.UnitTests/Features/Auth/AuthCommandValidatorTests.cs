@@ -1,5 +1,7 @@
 using FluentAssertions;
+using Tillegal.Application.Features.Auth.Commands.LoginWithGoogle;
 using Tillegal.Application.Features.Auth.Commands.Register;
+using Tillegal.Application.Features.Auth.Commands.RegisterWithGoogle;
 using Tillegal.Application.Features.Auth.Commands.VerifyRegistration;
 
 namespace Tillegal.Application.UnitTests.Features.Auth;
@@ -7,6 +9,8 @@ namespace Tillegal.Application.UnitTests.Features.Auth;
 public class AuthCommandValidatorTests
 {
     private readonly RegisterCommandValidator _registerValidator = new();
+    private readonly LoginWithGoogleCommandValidator _googleLoginValidator = new();
+    private readonly RegisterWithGoogleCommandValidator _googleRegisterValidator = new();
     private readonly VerifyRegistrationCommandValidator _verifyValidator = new();
 
     [Theory]
@@ -43,6 +47,29 @@ public class AuthCommandValidatorTests
     {
         var command = new VerifyRegistrationCommand(email, otp);
         var result = _verifyValidator.Validate(command);
+        result.IsValid.Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void GoogleRegisterValidator_WhenTokenIsMissing_ShouldHaveValidationErrors(string idToken)
+    {
+        var result = _googleRegisterValidator.Validate(new RegisterWithGoogleCommand(idToken));
+        result.IsValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public void GoogleRegisterValidator_WhenTokenIsPresent_ShouldPass()
+    {
+        var result = _googleRegisterValidator.Validate(new RegisterWithGoogleCommand("google-id-token"));
+        result.IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void GoogleLoginValidator_WhenTokenIsMissing_ShouldHaveValidationErrors()
+    {
+        var result = _googleLoginValidator.Validate(new LoginWithGoogleCommand(string.Empty));
         result.IsValid.Should().BeFalse();
     }
 

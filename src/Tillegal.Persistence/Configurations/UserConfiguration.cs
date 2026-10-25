@@ -32,6 +32,12 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<UserDataModel>
         builder.Property(u => u.Email)
             .HasColumnType("text");
 
+        builder.Property(u => u.GoogleSubject)
+            .HasColumnType("text");
+
+        builder.HasIndex(u => u.GoogleSubject)
+            .IsUnique();
+
         builder.Property(u => u.PasswordHash)
             .HasColumnType("text");
 

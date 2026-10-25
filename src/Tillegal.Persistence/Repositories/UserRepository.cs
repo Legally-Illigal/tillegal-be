@@ -31,6 +31,17 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
         return dataModel is null ? null : MapToEntity(dataModel);
     }
 
+    public async Task<User?> GetByGoogleSubjectAsync(string googleSubject, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(googleSubject);
+
+        var dataModel = await dbContext.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.GoogleSubject == googleSubject, cancellationToken);
+
+        return dataModel is null ? null : MapToEntity(dataModel);
+    }
+
     public async Task<bool> ExistsByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(email);
@@ -60,6 +71,7 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
             RoleId = user.RoleId,
             FullName = user.FullName,
             Email = user.Email,
+            GoogleSubject = user.GoogleSubject,
             PasswordHash = user.PasswordHash,
             PhoneNumber = user.PhoneNumber,
             CreatedAt = user.CreatedAt
@@ -76,6 +88,7 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
             RoleId = dataModel.RoleId,
             FullName = dataModel.FullName,
             Email = dataModel.Email,
+            GoogleSubject = dataModel.GoogleSubject,
             PasswordHash = dataModel.PasswordHash,
             PhoneNumber = dataModel.PhoneNumber,
             CreatedAt = dataModel.CreatedAt,

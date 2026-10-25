@@ -48,6 +48,11 @@ public static class InfrastructureExtensions
         services.AddOptions<AiServiceOptions>()
             .Bind(configuration.GetSection(AiServiceOptions.SectionName));
 
+        services.AddOptions<GoogleAuthOptions>()
+            .Bind(configuration.GetSection(GoogleAuthOptions.SectionName))
+            .Validate(options => !string.IsNullOrWhiteSpace(options.ClientId), "Google OAuth client ID is required.")
+            .ValidateOnStart();
+
         return services.AddInfrastructure(configuration);
     }
 }
