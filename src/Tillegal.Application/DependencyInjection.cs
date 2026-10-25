@@ -4,6 +4,7 @@ using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Tillegal.Application.Common.Behaviors;
 using Tillegal.Application.Common.Mappings;
+using Tillegal.Domain.Interfaces.Services;
 using Tillegal.Domain.Services;
 
 namespace Tillegal.Application;

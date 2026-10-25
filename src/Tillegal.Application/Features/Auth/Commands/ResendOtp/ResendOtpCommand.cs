@@ -4,7 +4,6 @@ using MediatR;
 using Tillegal.Application.Common.Interfaces;
 using Tillegal.Application.Features.Auth.Models;
 using Tillegal.Domain.Exceptions;
-using Tillegal.Domain.Services;
 
 namespace Tillegal.Application.Features.Auth.Commands.ResendOtp;
 

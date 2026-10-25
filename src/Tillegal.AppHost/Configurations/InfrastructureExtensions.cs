@@ -41,7 +41,7 @@ public static class InfrastructureExtensions
 
         services.AddOptions<JwtOptions>()
             .Bind(configuration.GetSection(JwtOptions.SectionName))
-            .Validate(options => !string.IsNullOrWhiteSpace(options.SigningKey) && options.SigningKey.Length >= 32,
+https://github.com/Legally-Illigal/tillegal-be/pull/29/conflict?name=src%252FTillegal.AppHost%252FConfigurations%252FInfrastructureExtensions.cs&ancestor_oid=07a27b69ff9f4686afa191e86439cfcbbcbf2057&base_oid=6c873d2e41c6df75244c2e787a78bcf7b610c552&head_oid=45dd2347b07c8af1bb091fba58801811261709aa            .Validate(options => !string.IsNullOrWhiteSpace(options.SigningKey) && options.SigningKey.Length >= 32,
                 "JWT SigningKey must be at least 32 characters long.")
             .ValidateOnStart();
 

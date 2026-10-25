@@ -21,6 +21,20 @@ Authorization: Bearer <token_string>
 
 When missing or invalid, ASP.NET Core returns HTTP 401 (`Unauthorized`).
 
+## Google registration
+
+`POST /api/auth/register/google` accepts a Google ID token issued to the configured frontend OAuth client:
+
+```json
+{ "idToken": "<Google ID token>" }
+```
+
+The backend verifies the token signature, expiry, issuer, and audience with Google's validation library, and requires a verified email. It creates a passwordless user with the default `User` role, persists the stable Google `sub` claim in `Users.GoogleSubject`, and sets the Tillegal JWT in the `access_token` HttpOnly cookie. The JWT is not included in the JSON response, and the Google ID token itself is not stored. If the email already exists, registration is rejected; existing accounts are not implicitly linked. Invalid or expired Google tokens return HTTP 401; validation and duplicate-account errors return HTTP 400.
+
+`POST /api/auth/login/google` accepts the same request and verifies the new Google ID token, then looks up the user by stored Google `sub` and sets a Tillegal JWT in the same cookie. It does not link accounts by email. Both endpoints return user details and a message in JSON, but never return the access token. Accounts created with Google before `GoogleSubject` was added have no stored subject and require an explicit account-linking flow before Google login can work for them.
+
+Configure `GoogleAuth:ClientId` (environment variable `GoogleAuth__ClientId`) to the OAuth client ID used to obtain the ID token. The Tillegal JWT is signed using `Jwt:SigningKey`, with issuer/audience and expiration from the existing `Jwt` configuration. The database migration `AddGoogleSubjectToUsers` must be applied before using these endpoints.
+
 ## Current User Service (`ICurrentUserService`)
 
 The application layer resolves caller identity via `ICurrentUserService` without directly coupling to `HttpContext`:

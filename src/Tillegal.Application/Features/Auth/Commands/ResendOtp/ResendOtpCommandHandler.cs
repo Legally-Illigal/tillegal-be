@@ -4,12 +4,12 @@ using MediatR;
 using Tillegal.Application.Common.Interfaces;
 using Tillegal.Application.Features.Auth.Models;
 using Tillegal.Domain.Exceptions;
-using Tillegal.Domain.Services;
+using Tillegal.Domain.Interfaces.Services;
 
 namespace Tillegal.Application.Features.Auth.Commands.ResendOtp;
 
 public sealed class ResendOtpCommandHandler(
-    AuthService authService,
+    IAuthService authService,
     ICacheService cacheService,
     IEmailService emailService,
     IDateTimeProvider dateTimeProvider) : IRequestHandler<ResendOtpCommand, ResendOtpResult>
