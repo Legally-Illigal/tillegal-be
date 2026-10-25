@@ -178,3 +178,130 @@ Use this file as a concise handoff record, not as a transcript. Append an entry 
 - **Next action:**
   - Implement logout (`POST /api/auth/logout`) and refresh token flow when required.
 
+## 2026-10-25 — Implement Create Conversation feature (BE-F03)
+
+- **Status:** Completed for conversation creation scope (part of BE-F03).
+- **Completed:**
+  - Implemented Clean Architecture create conversation flow (`POST /api/conversations`).
+  - Updated `Conversation` entity in `Tillegal.Domain.Entities` with constructors, `Conversation.Create(userId, title)` factory method, and `UpdateTitle(newTitle)` domain invariants.
+  - Declared `IConversationRepository` in `Tillegal.Domain.Interfaces.Repositories` and implemented `ConversationRepository` in `Tillegal.Persistence.Repositories` using EF Core `AppDbContext`.
+  - Added `ConversationService` domain service in `Tillegal.Domain.Services` to orchestrate creation of conversation entities and encapsulate domain operations.
+  - Implemented CQRS create flow:
+    - `CreateConversationCommand` and `CreateConversationResult` in `Tillegal.Application/Features/Conversations/Commands/CreateConversation/`.
+    - `CreateConversationCommandValidator` validating title constraints (max 255 chars, cannot be empty/whitespace if specified).
+    - `CreateConversationCommandHandler` resolving user ID via `ICurrentUserService`, applying fallback title `"Cuộc hội thoại mới"` if omitted, invoking `ConversationService`, and persisting via `IUnitOfWork`.
+  - Configured Mapster mappings:
+    - Domain <-> Application: `Conversation` -> `CreateConversationResult` in `ConversationMappingConfig.cs`.
+    - Api <-> Application: `CreateConversationApiRequest` -> `CreateConversationCommand`, `CreateConversationResult` -> `CreateConversationApiResponse` in `ConversationApiMappingConfig.cs`.
+  - Added `ConversationsController` (`[Authorize]`, inherits `BaseApiController`) exposing `POST /api/conversations` returning HTTP 201 Created.
+  - Registered services in DI (`IConversationRepository` in `Tillegal.Persistence/DependencyInjection.cs`, `ConversationService` in `Tillegal.Application/DependencyInjection.cs`).
+  - Added unit tests:
+    - `ConversationTests`: tests entity creation, Guid v7 generation, null/empty/whitespace validations, and title updates.
+    - `CreateConversationCommandHandlerTests`: tests authenticated flow, unauthenticated `UnauthorizedException`, and default title fallback.
+    - `ConversationCommandValidatorTests`: tests valid, null, empty, whitespace, and length > 255 titles.
+    - `ConversationMappingTests`: tests Mapster mapping between domain entity and result DTO.
+  - Updated `docs/development/backend-feature-backlog.md` status for `BE-F03` to `Một phần`.
+- **Changed paths:**
+  - `docs/development/backend-feature-backlog.md`
+  - `docs/development/agent-worklog.md`
+  - `src/Tillegal.Domain/Entities/Conversation.cs`
+  - `src/Tillegal.Domain/Interfaces/Repositories/IConversationRepository.cs`
+  - `src/Tillegal.Domain/Services/ConversationService.cs`
+  - `src/Tillegal.Persistence/Repositories/ConversationRepository.cs`
+  - `src/Tillegal.Persistence/DependencyInjection.cs`
+  - `src/Tillegal.Application/Features/Conversations/Commands/CreateConversation/CreateConversationCommand.cs`
+  - `src/Tillegal.Application/Features/Conversations/Commands/CreateConversation/CreateConversationCommandValidator.cs`
+  - `src/Tillegal.Application/Features/Conversations/Commands/CreateConversation/CreateConversationCommandHandler.cs`
+  - `src/Tillegal.Application/Features/Conversations/Mappings/ConversationMappingConfig.cs`
+  - `src/Tillegal.Application/DependencyInjection.cs`
+  - `src/Tillegal.Api/Contracts/Conversations/ConversationContracts.cs`
+  - `src/Tillegal.Api/Mappings/ConversationApiMappingConfig.cs`
+  - `src/Tillegal.Api/Controllers/ConversationsController.cs`
+  - `tests/Tillegal.Application.UnitTests/Domain/ConversationTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Conversations/CreateConversationCommandHandlerTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Conversations/ConversationCommandValidatorTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Conversations/ConversationMappingTests.cs`
+- **Checks run:**
+  - `dotnet build tillegal-be.slnx`: Succeeded (0 warnings, 0 errors).
+  - `dotnet test tillegal-be.slnx`: 57/57 unit tests passed, 7/7 architecture tests passed.
+  - `dotnet format tillegal-be.slnx --verify-no-changes`: Passed with 0 discrepancies.
+- **Next action:**
+  - Implement conversation listing (`GET /api/conversations`) and retrieval by ID (`GET /api/conversations/{id}`) under BE-F03.
+
+## 2026-10-25 — Implement Conversation Q&A Feature (BE-F04, BE-F05, BE-F06, BE-F07)
+
+- **Status:** Completed for Q&A and conversation messaging scope.
+- **Completed:**
+  - Implemented Clean Architecture Q&A message exchange flow (`POST /api/conversations/{id}/messages` and `POST /api/conversations/{id}/ask`, `GET /api/conversations/{id}/messages`).
+  - Enhanced `ConversationMessage` domain entity with constructors, `CreateUserMessage`, `CreateAssistantMessage` factory methods, and domain invariant validation.
+  - Declared `IConversationMessageRepository` in `Tillegal.Domain.Interfaces.Repositories` and implemented `ConversationMessageRepository` in `Tillegal.Persistence.Repositories`.
+  - Updated `ConversationService` in `Tillegal.Domain.Services` to inject message repository and support `AddUserMessageAsync`, `AddAssistantMessageAsync`, and `GetMessagesAsync`.
+  - Added `ILegalAiService` port in `Tillegal.Application.Common.Interfaces` (`AskAsync` taking question, conversationId, and history).
+  - Implemented `LegalAiServiceClient` in `Tillegal.Infrastructure.ExternalServices.AiService` supporting external HTTP AI Service endpoints with fallback legal advisor generator with JSON citations.
+  - Added `AiServiceOptions` in `Tillegal.Infrastructure.Options` and bound in `InfrastructureExtensions`.
+  - Implemented CQRS Q&A:
+    - `AskQuestionCommand`, `ConversationMessageDto`, `AskQuestionResult` in `Tillegal.Application/Features/Conversations/Commands/AskQuestion/`.
+    - `AskQuestionCommandValidator` checking `ConversationId`, non-empty question, max 4000 characters.
+    - `AskQuestionCommandHandler` ensuring user authentication and conversation ownership (throwing `ForbiddenAccessException` or `NotFoundException`), persisting user question, fetching context history, invoking `ILegalAiService`, persisting assistant response, and committing via `IUnitOfWork`.
+    - `GetConversationMessagesQuery`, validator, and handler in `Tillegal.Application/Features/Conversations/Queries/GetConversationMessages/`.
+  - Configured Mapster mappings in `ConversationMappingConfig.cs` and `ConversationApiMappingConfig.cs`.
+  - Added endpoints to `ConversationsController`:
+    - `POST /api/conversations/{id}/messages` (and alias `/ask`) returning `200 OK` with user and assistant messages.
+    - `GET /api/conversations/{id}/messages` returning `200 OK` with chronological conversation history.
+  - Registered services in DI: `IConversationMessageRepository` in Persistence, `ILegalAiService` via `HttpClient` in Infrastructure.
+  - Added unit tests:
+    - `ConversationMessageTests`: tests user and assistant message creation, domain invariants, and citations handling.
+    - `AskQuestionCommandHandlerTests`: tests authenticated happy path, unauthenticated check, 404 not found, 403 forbidden ownership check.
+    - `AskQuestionCommandValidatorTests`: tests valid question, empty conversation ID, whitespace/null question, and question > 4000 characters.
+    - `GetConversationMessagesQueryHandlerTests`: tests valid message history retrieval, unauthenticated check, 404 not found, 403 forbidden check.
+  - Updated `backend-feature-backlog.md` status for `BE-F04`, `BE-F05`, `BE-F06`, `BE-F07` to `Một phần`.
+- **Changed paths:**
+  - `docs/development/backend-feature-backlog.md`
+  - `docs/development/agent-worklog.md`
+  - `src/Tillegal.Domain/Entities/ConversationMessage.cs`
+  - `src/Tillegal.Domain/Interfaces/Repositories/IConversationMessageRepository.cs`
+  - `src/Tillegal.Domain/Services/ConversationService.cs`
+  - `src/Tillegal.Persistence/Repositories/ConversationMessageRepository.cs`
+  - `src/Tillegal.Persistence/DependencyInjection.cs`
+  - `src/Tillegal.Application/Common/Interfaces/ILegalAiService.cs`
+  - `src/Tillegal.Application/Features/Conversations/Commands/AskQuestion/AskQuestionCommand.cs`
+  - `src/Tillegal.Application/Features/Conversations/Commands/AskQuestion/AskQuestionCommandValidator.cs`
+  - `src/Tillegal.Application/Features/Conversations/Commands/AskQuestion/AskQuestionCommandHandler.cs`
+  - `src/Tillegal.Application/Features/Conversations/Queries/GetConversationMessages/GetConversationMessagesQuery.cs`
+  - `src/Tillegal.Application/Features/Conversations/Queries/GetConversationMessages/GetConversationMessagesQueryValidator.cs`
+  - `src/Tillegal.Application/Features/Conversations/Queries/GetConversationMessages/GetConversationMessagesQueryHandler.cs`
+  - `src/Tillegal.Application/Features/Conversations/Mappings/ConversationMappingConfig.cs`
+  - `src/Tillegal.Infrastructure/Options/AiServiceOptions.cs`
+  - `src/Tillegal.Infrastructure/ExternalServices/AiService/LegalAiServiceClient.cs`
+  - `src/Tillegal.Infrastructure/DependencyInjection.cs`
+  - `src/Tillegal.AppHost/Configurations/InfrastructureExtensions.cs`
+  - `src/Tillegal.Api/Contracts/Conversations/ConversationContracts.cs`
+  - `src/Tillegal.Api/Mappings/ConversationApiMappingConfig.cs`
+  - `src/Tillegal.Api/Controllers/ConversationsController.cs`
+  - `tests/Tillegal.Application.UnitTests/Domain/ConversationMessageTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Conversations/AskQuestionCommandHandlerTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Conversations/AskQuestionCommandValidatorTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Conversations/GetConversationMessagesQueryHandlerTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Conversations/CreateConversationCommandHandlerTests.cs`
+- **Checks run:**
+  - `dotnet build tillegal-be.slnx`: Succeeded (0 warnings, 0 errors).
+  - `dotnet test tillegal-be.slnx`: 81/81 unit tests passed, 7/7 architecture tests passed.
+  - `dotnet format tillegal-be.slnx --verify-no-changes`: Passed with 0 discrepancies.
+- **Next action:**
+  - Implement conversation listing (`GET /api/conversations`) and conversation update/delete (`PUT/DELETE /api/conversations/{id}`) under BE-F03.
+
+## 2026-10-26 — Consolidate Q&A Route and Simplify Request Body in ConversationsController
+
+- **Status:** Completed.
+- **Completed:**
+  - Removed redundant `[HttpPost("{id:guid}/ask")]` route from `ConversationsController`, standardizing strictly on the RESTful `POST /api/conversations/{id}/messages` endpoint alongside `GET /api/conversations/{id}/messages`.
+  - Simplified `AskQuestionApiRequest` to solely contain `string Content`, eliminating redundant `Question` field and avoiding schema confusion in Swagger UI.
+- **Changed paths:**
+  - `src/Tillegal.Api/Contracts/Conversations/ConversationContracts.cs`
+  - `src/Tillegal.Api/Controllers/ConversationsController.cs`
+- **Checks run:**
+  - `dotnet build src/Tillegal.Api/Tillegal.Api.csproj`: Succeeded (0 warnings, 0 errors).
+  - `dotnet test tests/Tillegal.Application.UnitTests/`: 81/81 passed.
+  - `dotnet test tests/Tillegal.ArchitectureTests/`: 7/7 passed.
+  - `dotnet format tillegal-be.slnx --verify-no-changes`: Passed with 0 discrepancies.
+- **Next action:** Implement conversation listing (`GET /api/conversations`) and update/delete endpoints.

@@ -1,4 +1,4 @@
-﻿# Backend Feature Backlog
+# Backend Feature Backlog
 
 ## Purpose and status rules
 
@@ -21,11 +21,11 @@ Do not split these feature entries into child implementation tasks unless the us
 |---|---|---|---|
 | BE-F01 | Quản lý tài khoản | Đăng ký, đăng nhập, đăng xuất và quản lý phiên xác thực người dùng. | Một phần |
 | BE-F02 | Xác thực và phân quyền | Xác thực danh tính, kiểm soát quyền truy cập theo vai trò và quyền sở hữu dữ liệu. | Chưa đánh giá |
-| BE-F03 | Quản lý hội thoại | Tạo, xem, cập nhật và quản lý các cuộc hội thoại của người dùng. | Chưa đánh giá |
-| BE-F04 | Quản lý tin nhắn và lịch sử | Lưu trữ, truy xuất tin nhắn và cung cấp ngữ cảnh hội thoại cho các lượt trao đổi tiếp theo. | Chưa đánh giá |
-| BE-F05 | Tiếp nhận và xử lý yêu cầu pháp lý | Cung cấp API tiếp nhận yêu cầu từ Frontend và điều phối yêu cầu đến AI Service. | Chưa đánh giá |
-| BE-F06 | Tích hợp AI Service | Giao tiếp với AI Service để thực hiện các chức năng hỏi đáp, tư vấn pháp lý và kiểm chứng trích dẫn. | Chưa đánh giá |
-| BE-F07 | Quản lý trạng thái và kết quả xử lý | Tiếp nhận, xử lý và trả kết quả từ AI Service theo hợp đồng API; xử lý lỗi hoặc kết quả không hợp lệ. | Chưa đánh giá |
+| BE-F03 | Quản lý hội thoại | Tạo, xem, cập nhật và quản lý các cuộc hội thoại của người dùng. | Một phần |
+| BE-F04 | Quản lý tin nhắn và lịch sử | Lưu trữ, truy xuất tin nhắn và cung cấp ngữ cảnh hội thoại cho các lượt trao đổi tiếp theo. | Một phần |
+| BE-F05 | Tiếp nhận và xử lý yêu cầu pháp lý | Cung cấp API tiếp nhận yêu cầu từ Frontend và điều phối yêu cầu đến AI Service. | Một phần |
+| BE-F06 | Tích hợp AI Service | Giao tiếp với AI Service để thực hiện các chức năng hỏi đáp, tư vấn pháp lý và kiểm chứng trích dẫn. | Một phần |
+| BE-F07 | Quản lý trạng thái và kết quả xử lý | Tiếp nhận, xử lý và trả kết quả từ AI Service theo hợp đồng API; xử lý lỗi hoặc kết quả không hợp lệ. | Một phần |
 | BE-F08 | Chức năng quản trị | Cung cấp API quản trị tài khoản và thông tin trạng thái vận hành cần thiết cho quản trị viên. | Chưa đánh giá |
 | BE-F09 | Kiểm soát bảo mật và nhật ký | Kiểm soát truy cập dữ liệu, bảo vệ thông tin nhạy cảm và ghi nhận các sự kiện cần thiết phục vụ kiểm tra. | Chưa đánh giá |
 
