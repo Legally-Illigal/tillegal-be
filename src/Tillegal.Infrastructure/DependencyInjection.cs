@@ -19,6 +19,7 @@ public static class DependencyInjection
     {
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
         services.AddSingleton<IPasswordHashingService, PasswordHashingService>();
+        services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddSingleton<CorrelationIdGenerator>();
         services.AddTransient<LoggingHandler>();
         services.AddHttpClient<ICacheService, UpstashRedisCacheService>()

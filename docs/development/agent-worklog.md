@@ -130,3 +130,51 @@ Use this file as a concise handoff record, not as a transcript. Append an entry 
   - `dotnet test tillegal-be.slnx`: 28/28 unit tests passed, 7/7 architecture tests passed.
   - `dotnet format tillegal-be.slnx --verify-no-changes`: Passed with 0 formatting discrepancies.
 - **Next action:** None for this task.
+
+## 2026-10-25 — Implement User Login flow with JWT token generation and cookie issuance
+
+- **Status:** Completed for login scope (part of BE-F01).
+- **Completed:**
+  - Implemented Clean Architecture login flow (`POST /api/auth/login`).
+  - Added `Role` property to `User` domain entity and updated `UserRepository` to `.Include(u => u.Role)` in `GetByEmailAsync` and `GetByIdAsync`.
+  - Added `GetUserForLoginAsync` to `AuthService` in Domain layer.
+  - Created `IJwtTokenGenerator` port in `Tillegal.Application/Common/Interfaces/` and implemented concrete `JwtTokenGenerator` in `Tillegal.Infrastructure/SystemServices/` using `System.IdentityModel.Tokens.Jwt` (JWT claims: `sub`, `nameidentifier`, `email`, `name`, `role`, `jti`).
+  - Configured `JwtOptions` in `Tillegal.Infrastructure/Options/` and bound/validated in `AppHost/Configurations/InfrastructureExtensions.cs`.
+  - Implemented CQRS login flow (`LoginCommand`, `LoginCommandValidator`, `LoginCommandHandler`, `LoginResult`, `LoginUserDto`) in `Tillegal.Application/Features/Auth/Commands/Login/`.
+  - Added `UnauthorizedException` in `Tillegal.Application/Common/Exceptions/` and configured HTTP 401 ProblemDetails mapping in `ExceptionHandlingMiddleware`.
+  - Added Mapster mapping configurations:
+    - Domain <-> Application: `User` -> `LoginUserDto` with Role name in `AuthMappingConfig.cs`.
+    - Api <-> Application: `LoginApiRequest` -> `LoginCommand`, `LoginResult` -> `LoginApiResponse`, `LoginUserDto` -> `LoginUserApiResponse` in `AuthApiMappingConfig.cs`.
+  - Added `POST /api/auth/login` endpoint in `AuthController`, issuing JWT exclusively via HttpOnly secure cookie (`access_token`) with `Secure = Request.IsHttps`, returning only user information in response body.
+  - Configured `AddJwtBearer` with `JwtBearerEvents.OnMessageReceived` in `Tillegal.Api/DependencyInjection.cs` to authenticate requests from the `access_token` cookie when no Authorization header is present.
+  - Added comprehensive unit tests in `LoginCommandHandlerTests`, `AuthCommandValidatorTests`, and `AuthMappingTests`.
+- **Changed paths:**
+  - `docs/development/agent-worklog.md`
+  - `src/Tillegal.Domain/Entities/User.cs`
+  - `src/Tillegal.Domain/Services/AuthService.cs`
+  - `src/Tillegal.Persistence/Repositories/UserRepository.cs`
+  - `src/Tillegal.Application/Common/Exceptions/UnauthorizedException.cs`
+  - `src/Tillegal.Application/Common/Interfaces/IJwtTokenGenerator.cs`
+  - `src/Tillegal.Application/Features/Auth/Commands/Login/LoginCommand.cs`
+  - `src/Tillegal.Application/Features/Auth/Commands/Login/LoginCommandValidator.cs`
+  - `src/Tillegal.Application/Features/Auth/Commands/Login/LoginCommandHandler.cs`
+  - `src/Tillegal.Application/Features/Auth/Mappings/AuthMappingConfig.cs`
+  - `src/Tillegal.Infrastructure/Tillegal.Infrastructure.csproj`
+  - `src/Tillegal.Infrastructure/Options/JwtOptions.cs`
+  - `src/Tillegal.Infrastructure/SystemServices/JwtTokenGenerator.cs`
+  - `src/Tillegal.Infrastructure/DependencyInjection.cs`
+  - `src/Tillegal.AppHost/Configurations/InfrastructureExtensions.cs`
+  - `src/Tillegal.Api/Contracts/Auth/LoginContracts.cs`
+  - `src/Tillegal.Api/Mappings/AuthApiMappingConfig.cs`
+  - `src/Tillegal.Api/Middlewares/ExceptionHandlingMiddleware.cs`
+  - `src/Tillegal.Api/Controllers/AuthController.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Auth/LoginCommandHandlerTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Auth/AuthCommandValidatorTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Auth/AuthMappingTests.cs`
+- **Checks run:**
+  - `dotnet build tillegal-be.slnx`: Succeeded (0 warnings, 0 errors).
+  - `dotnet test tillegal-be.slnx`: 37/37 unit tests passed, 7/7 architecture tests passed.
+  - `dotnet format tillegal-be.slnx --verify-no-changes`: Passed with 0 discrepancies.
+- **Next action:**
+  - Implement logout (`POST /api/auth/logout`) and refresh token flow when required.
+

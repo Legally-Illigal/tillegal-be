@@ -12,6 +12,7 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
     {
         var dataModel = await dbContext.Users
             .AsNoTracking()
+            .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
 
         return dataModel is null ? null : MapToEntity(dataModel);
@@ -24,6 +25,7 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
         var normalizedEmail = email.Trim().ToLowerInvariant();
         var dataModel = await dbContext.Users
             .AsNoTracking()
+            .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == normalizedEmail, cancellationToken);
 
         return dataModel is null ? null : MapToEntity(dataModel);
@@ -76,7 +78,8 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
             Email = dataModel.Email,
             PasswordHash = dataModel.PasswordHash,
             PhoneNumber = dataModel.PhoneNumber,
-            CreatedAt = dataModel.CreatedAt
+            CreatedAt = dataModel.CreatedAt,
+            Role = dataModel.Role != null ? new Role(dataModel.Role.Id, dataModel.Role.Name) : null
         };
     }
 }

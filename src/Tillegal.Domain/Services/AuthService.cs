@@ -41,4 +41,11 @@ public sealed class AuthService(IUserRepository userRepository)
         await userRepository.AddAsync(user, cancellationToken);
         return user;
     }
+
+    public async Task<User?> GetUserForLoginAsync(string email, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(email);
+
+        return await userRepository.GetByEmailAsync(email, cancellationToken);
+    }
 }

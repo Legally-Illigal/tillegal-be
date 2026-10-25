@@ -80,6 +80,18 @@ public sealed class ExceptionHandlingMiddleware(
                 Title = "Access denied.",
                 Detail = forbiddenException.Message
             },
+            UnauthorizedException unauthorizedException => new ProblemDetails
+            {
+                Status = StatusCodes.Status401Unauthorized,
+                Title = "Authentication failed.",
+                Detail = unauthorizedException.Message
+            },
+            UnauthorizedAccessException unauthorizedAccessException => new ProblemDetails
+            {
+                Status = StatusCodes.Status401Unauthorized,
+                Title = "Authentication failed.",
+                Detail = unauthorizedAccessException.Message
+            },
             DomainException domainException => new ProblemDetails
             {
                 Status = StatusCodes.Status400BadRequest,
