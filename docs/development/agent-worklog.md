@@ -178,3 +178,68 @@ Use this file as a concise handoff record, not as a transcript. Append an entry 
 - **Next action:**
   - Implement logout (`POST /api/auth/logout`) and refresh token flow when required.
 
+
+## 2026-10-25 — Add Google account registration
+
+- **Status:** Implemented and verified for account registration. Google registration does not issue a Tillegal JWT; login/session issuance remains unimplemented.
+- **Completed:** Added `POST /api/auth/register/google` to accept a Google ID token, validate its signature/expiry/issuer/audience with Google.Apis.Auth against configured `GoogleAuth:ClientId`, require a verified email, and create a passwordless user with the default `User` role. Existing email addresses are rejected rather than implicitly linked. Added request validation, HTTP 401 handling for invalid Google tokens, DI/configuration, API documentation, and handler/validator tests.
+- **Changed paths:** `docs/api/authentication.md`; `docs/development/backend-feature-backlog.md`; `docs/development/agent-worklog.md`; `src/Tillegal.Api/Contracts/Auth/GoogleRegistrationContracts.cs`; `src/Tillegal.Api/Controllers/AuthController.cs`; `src/Tillegal.Api/Mappings/AuthApiMappingConfig.cs`; `src/Tillegal.Api/Middlewares/ExceptionHandlingMiddleware.cs`; `src/Tillegal.AppHost/Configurations/InfrastructureExtensions.cs`; `src/Tillegal.AppHost/appsettings.Example.json`; `src/Tillegal.Application/Common/Exceptions/GoogleIdentityTokenException.cs`; `src/Tillegal.Application/Common/Interfaces/IGoogleIdentityTokenValidator.cs`; `src/Tillegal.Application/Common/Models/GoogleIdentity.cs`; `src/Tillegal.Application/Features/Auth/Commands/RegisterWithGoogle/RegisterWithGoogleCommand.cs`; `src/Tillegal.Application/Features/Auth/Commands/RegisterWithGoogle/RegisterWithGoogleCommandHandler.cs`; `src/Tillegal.Application/Features/Auth/Commands/RegisterWithGoogle/RegisterWithGoogleCommandValidator.cs`; `src/Tillegal.Application/Features/Auth/Mappings/AuthMappingConfig.cs`; `src/Tillegal.Domain/Services/AuthService.cs`; `src/Tillegal.Infrastructure/DependencyInjection.cs`; `src/Tillegal.Infrastructure/ExternalServices/Auth/GoogleIdentityTokenValidator.cs`; `src/Tillegal.Infrastructure/Options/GoogleAuthOptions.cs`; `src/Tillegal.Infrastructure/Tillegal.Infrastructure.csproj`; `tests/Tillegal.Application.UnitTests/Features/Auth/AuthCommandValidatorTests.cs`; `tests/Tillegal.Application.UnitTests/Features/Auth/RegisterWithGoogleCommandHandlerTests.cs`.
+- **Checks:** `dotnet build src/Tillegal.AppHost/Tillegal.AppHost.csproj` passed (0 warnings, 0 errors); Application unit tests passed (33/33); clean architecture tests passed (4/4); `dotnet format tillegal-be.slnx --verify-no-changes` passed; `git diff --check` passed.
+- **Remaining / next action:** Configure `GoogleAuth__ClientId` with the frontend's OAuth client ID before deployment. JWT issuance and Google login were subsequently implemented in the 2026-10-25 follow-up.
+
+## 2026-10-25 — Persist Google subject and issue Tillegal JWTs
+
+- **Status:** Implemented and verified for Google registration/login.
+- **Completed:** Persisted Google's stable `sub` claim in `Users.GoogleSubject` with a unique index; added `POST /api/auth/login/google` to authenticate by verified Google subject; both Google registration and login issue Tillegal JWTs signed with the existing `Jwt` settings and return `accessToken`/`expiresAt`. The Google ID token itself is not persisted.
+- **Changed paths:** `docs/api/authentication.md`; `docs/development/backend-feature-backlog.md`; `docs/development/agent-worklog.md`; `src/Tillegal.Api/Contracts/Auth/GoogleRegistrationContracts.cs`; `src/Tillegal.Api/Controllers/AuthController.cs`; `src/Tillegal.Api/Mappings/AuthApiMappingConfig.cs`; `src/Tillegal.Application/Common/Interfaces/IJwtTokenGenerator.cs`; `src/Tillegal.Application/Common/Models/GeneratedJwt.cs`; `src/Tillegal.Application/Common/Models/GoogleIdentity.cs`; `src/Tillegal.Application/Features/Auth/Commands/LoginWithGoogle/LoginWithGoogleCommand.cs`; `src/Tillegal.Application/Features/Auth/Commands/LoginWithGoogle/LoginWithGoogleCommandHandler.cs`; `src/Tillegal.Application/Features/Auth/Commands/LoginWithGoogle/LoginWithGoogleCommandValidator.cs`; `src/Tillegal.Application/Features/Auth/Commands/RegisterWithGoogle/RegisterWithGoogleCommand.cs`; `src/Tillegal.Application/Features/Auth/Commands/RegisterWithGoogle/RegisterWithGoogleCommandHandler.cs`; `src/Tillegal.Application/Features/Auth/Mappings/AuthMappingConfig.cs`; `src/Tillegal.Domain/Entities/User.cs`; `src/Tillegal.Domain/Interfaces/Repositories/IUserRepository.cs`; `src/Tillegal.Domain/Services/AuthService.cs`; `src/Tillegal.Infrastructure/DependencyInjection.cs`; `src/Tillegal.Infrastructure/ExternalServices/Auth/GoogleIdentityTokenValidator.cs`; `src/Tillegal.Infrastructure/SystemServices/JwtTokenGenerator.cs`; `src/Tillegal.Infrastructure/Tillegal.Infrastructure.csproj`; `src/Tillegal.Persistence/Configurations/UserConfiguration.cs`; `src/Tillegal.Persistence/DataModels/UserDataModel.cs`; `src/Tillegal.Persistence/Migrations/20261025051549_AddGoogleSubjectToUsers.cs`; `src/Tillegal.Persistence/Migrations/20261025051549_AddGoogleSubjectToUsers.Designer.cs`; `src/Tillegal.Persistence/Migrations/AppDbContextModelSnapshot.cs`; `src/Tillegal.Persistence/Repositories/UserRepository.cs`; `tests/Tillegal.Application.UnitTests/Features/Auth/AuthCommandValidatorTests.cs`; `tests/Tillegal.Application.UnitTests/Features/Auth/RegisterWithGoogleCommandHandlerTests.cs`; `tests/Tillegal.Application.UnitTests/Features/Auth/LoginWithGoogleCommandHandlerTests.cs`.
+- **Checks:** `dotnet build src/Tillegal.AppHost/Tillegal.AppHost.csproj` passed (0 warnings, 0 errors); Application unit tests passed (36/36); `dotnet format tillegal-be.slnx --verify-no-changes` passed after formatting the generated migration; migration generation completed with `dotnet ef migrations add`; `git diff --check` passed.
+- **Remaining / next action:** Configure `GoogleAuth__ClientId` before deployment. Development/Staging applies EF migrations automatically; apply `AddGoogleSubjectToUsers` via the production database deployment process before releasing these endpoints. Accounts created with Google before this migration need an explicit account-linking flow; they are not automatically linked by email.
+
+## 2026-10-25 — Resolve infrastructure configuration conflict
+
+- **Completed:** Retained JWT signing-key validation and Google OAuth client-ID validation as separate startup options registrations in `InfrastructureExtensions`.
+- **Changed paths:** `src/Tillegal.AppHost/Configurations/InfrastructureExtensions.cs`; `docs/development/agent-worklog.md`.
+- **Checks:** `git diff --check -- src/Tillegal.AppHost/Configurations/InfrastructureExtensions.cs` passed; the edited file contains no conflict markers. Repository-wide `git diff --check` reports conflict markers in other unmerged files. `dotnet build src/Tillegal.AppHost/Tillegal.AppHost.csproj --no-restore` was blocked by markers in `IJwtTokenGenerator.cs` and `AuthMappingConfig.cs`; the repository-wide build tool also failed with MSBuild target errors.
+- **Remaining / next action:** Other unmerged paths remain unresolved; complete them in Git Changes and rerun the build.
+
+## 2026-10-25 — Recheck and merge remaining auth conflicts
+
+- **Completed:** Removed remaining conflict markers from the Git working-copy resolutions. Kept both JWT generator APIs in one implementation backed by the validated `JwtOptions`, retained mappings for password login and Google registration, and registered the Google token validator.
+- **Changed paths:** `src/Tillegal.Application/Common/Interfaces/IJwtTokenGenerator.cs`; `src/Tillegal.Application/Features/Auth/Mappings/AuthMappingConfig.cs`; `src/Tillegal.Infrastructure/DependencyInjection.cs`; `src/Tillegal.Infrastructure/SystemServices/JwtTokenGenerator.cs`; `docs/development/agent-worklog.md`.
+- **Checks:** `dotnet build src/Tillegal.AppHost/Tillegal.AppHost.csproj --no-restore` passed (0 warnings, 0 errors); Application unit tests passed (45/45); `dotnet format tillegal-be.slnx --verify-no-changes --no-restore` passed; conflict-marker scan and scoped `git diff --check` passed.
+- **Remaining / next action:** All five resolved conflict paths are staged and Git reports no unmerged paths. Run `git rebase --continue` from Git Changes or the terminal to finish replaying the commit.
+
+## 2026-10-25 — Store Google auth JWT in cookie
+
+- **Completed:** Google registration and login now set the Tillegal JWT in the same `access_token` HttpOnly cookie used by password login. Removed the access token and expiry from the Google API JSON response contract; documented the updated behavior.
+- **Changed paths:** `src/Tillegal.Api/Controllers/AuthController.cs`; `src/Tillegal.Api/Contracts/Auth/GoogleRegistrationContracts.cs`; `docs/api/authentication.md`; `docs/development/agent-worklog.md`.
+- **Checks:** AppHost build passed (0 warnings, 0 errors); Application unit tests passed (45/45); `dotnet format tillegal-be.slnx --verify-no-changes --no-restore` passed.
+- **Remaining / next action:** Git rebase still awaits `git rebase --continue`.
+
+## 2026-10-25 — Add Domain auth service interface
+
+- **Completed:** Added `IAuthService` under Domain interfaces, implemented it in `AuthService`, registered the abstraction in Application DI, and updated authentication handlers to depend on the interface.
+- **Changed paths:** `src/Tillegal.Domain/Interfaces/Services/IAuthService.cs`; `src/Tillegal.Domain/Services/AuthService.cs`; `src/Tillegal.Application/DependencyInjection.cs`; auth command handlers under `src/Tillegal.Application/Features/Auth/Commands/`; `docs/development/agent-worklog.md`.
+- **Checks:** AppHost build passed (0 warnings, 0 errors); Application unit tests passed (45/45); `dotnet format tillegal-be.slnx --verify-no-changes --no-restore` passed. One test run concurrent with the build hit a temporary compiler file lock (`CS2012`); rerunning tests after the build completed passed.
+- **Remaining / next action:** Git rebase still awaits `git rebase --continue`.
+
+## 2026-10-25 — Align Google registration result construction
+
+- **Completed:** Constructed `GoogleRegistrationResult` explicitly, matching the Google login handler, removed the unused mapper dependency and placeholder-token Mapster mapping, and updated the handler test setup.
+- **Changed paths:** `src/Tillegal.Application/Features/Auth/Commands/RegisterWithGoogle/RegisterWithGoogleCommandHandler.cs`; `src/Tillegal.Application/Features/Auth/Mappings/AuthMappingConfig.cs`; `tests/Tillegal.Application.UnitTests/Features/Auth/RegisterWithGoogleCommandHandlerTests.cs`; `docs/development/agent-worklog.md`.
+- **Checks:** AppHost build passed (0 warnings, 0 errors); Application unit tests passed (45/45); `dotnet format tillegal-be.slnx --verify-no-changes --no-restore` passed.
+- **Remaining / next action:** Git rebase still awaits `git rebase --continue`.
+
+## 2026-10-25 — Remove redundant login DTO and map API response
+
+- **Completed:** Removed application-layer `LoginUserDto`; `LoginResult` now carries the authenticated `User`, and the API Mapster config maps that user to `LoginUserApiResponse`, including role-name flattening. Removed the obsolete Application mapping and adjusted login tests.
+- **Changed paths:** `src/Tillegal.Application/Features/Auth/Commands/Login/LoginCommand.cs`; `src/Tillegal.Application/Features/Auth/Commands/Login/LoginCommandHandler.cs`; `src/Tillegal.Application/Features/Auth/Mappings/AuthMappingConfig.cs`; `src/Tillegal.Api/Mappings/AuthApiMappingConfig.cs`; `tests/Tillegal.Application.UnitTests/Features/Auth/LoginCommandHandlerTests.cs`; `tests/Tillegal.Application.UnitTests/Features/Auth/AuthMappingTests.cs`; `docs/development/agent-worklog.md`.
+- **Checks:** AppHost build passed (0 warnings, 0 errors); Application unit tests passed (44/44); `dotnet format tillegal-be.slnx --verify-no-changes --no-restore` and `git diff --check` passed.
+- **Remaining / next action:** Git rebase still awaits `git rebase --continue`.
+
+## 2026-10-25 — Use Mapster for auth result composition
+
+- **Completed:** Added explicit Mapster mappings for login and Google login/registration result construction from user/JWT source records; injected `IMapper` into those handlers. Kept Register and ResendOtp result construction direct because those results are calculated scalar messages/expiry values rather than object mappings.
+- **Changed paths:** `src/Tillegal.Application/Features/Auth/Mappings/AuthMappingConfig.cs`; `src/Tillegal.Application/Features/Auth/Mappings/AuthResultMappingSources.cs`; `src/Tillegal.Application/Features/Auth/Commands/Login/LoginCommandHandler.cs`; `src/Tillegal.Application/Features/Auth/Commands/LoginWithGoogle/LoginWithGoogleCommandHandler.cs`; `src/Tillegal.Application/Features/Auth/Commands/RegisterWithGoogle/RegisterWithGoogleCommandHandler.cs`; auth handler tests; `docs/development/agent-worklog.md`.
+- **Checks:** AppHost build passed (0 warnings, 0 errors); Application unit tests passed (44/44); `dotnet format tillegal-be.slnx --verify-no-changes --no-restore` passed.
+- **Remaining / next action:** Git rebase still awaits `git rebase --continue`.

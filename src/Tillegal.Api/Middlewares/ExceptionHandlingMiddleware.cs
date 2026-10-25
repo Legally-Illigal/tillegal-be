@@ -92,6 +92,12 @@ public sealed class ExceptionHandlingMiddleware(
                 Title = "Authentication failed.",
                 Detail = unauthorizedAccessException.Message
             },
+            GoogleIdentityTokenException googleTokenException => new ProblemDetails
+            {
+                Status = StatusCodes.Status401Unauthorized,
+                Title = "Google authentication failed.",
+                Detail = googleTokenException.Message
+            },
             DomainException domainException => new ProblemDetails
             {
                 Status = StatusCodes.Status400BadRequest,

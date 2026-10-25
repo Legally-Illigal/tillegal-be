@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Tillegal.Application.Common.Interfaces;
+using Tillegal.Application.Common.Models;
 using Tillegal.Domain.Entities;
 using Tillegal.Infrastructure.Options;
 
@@ -17,6 +18,25 @@ public sealed class JwtTokenGenerator(
 
     public JwtTokenResult GenerateToken(User user, string? roleName = null)
     {
+        var generatedJwt = CreateToken(user, roleName);
+        var expirationMinutes = _jwtOptions.ExpirationMinutes > 0 ? _jwtOptions.ExpirationMinutes : 60;
+        return new JwtTokenResult(generatedJwt.Token, expirationMinutes * 60);
+    }
+
+    public GeneratedJwt Generate(Guid userId, string email, string fullName)
+    {
+        var user = new User
+        {
+            Id = userId,
+            Email = email,
+            FullName = fullName
+        };
+        var generatedJwt = CreateToken(user);
+        return new GeneratedJwt(generatedJwt.Token, generatedJwt.ExpiresAt);
+    }
+
+    private (string Token, DateTimeOffset ExpiresAt) CreateToken(User user, string? roleName = null)
+    {
         ArgumentNullException.ThrowIfNull(user);
 
         if (string.IsNullOrWhiteSpace(_jwtOptions.SigningKey))
@@ -24,11 +44,9 @@ public sealed class JwtTokenGenerator(
             throw new InvalidOperationException("JWT signing key is not configured.");
         }
 
-        var keyBytes = Encoding.UTF8.GetBytes(_jwtOptions.SigningKey);
         var signingCredentials = new SigningCredentials(
-            new SymmetricSecurityKey(keyBytes),
+            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.SigningKey)),
             SecurityAlgorithms.HmacSha256);
-
         var resolvedRole = roleName ?? user.Role?.Name ?? "User";
         var claims = new List<Claim>
         {
@@ -47,15 +65,14 @@ public sealed class JwtTokenGenerator(
         }
 
         var expirationMinutes = _jwtOptions.ExpirationMinutes > 0 ? _jwtOptions.ExpirationMinutes : 60;
-        var now = dateTimeProvider.UtcNow.UtcDateTime;
-        var expiresAt = now.AddMinutes(expirationMinutes);
-
+        var issuedAt = dateTimeProvider.UtcNow;
+        var expiresAt = issuedAt.AddMinutes(expirationMinutes);
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
-            IssuedAt = now,
-            NotBefore = now,
-            Expires = expiresAt,
+            IssuedAt = issuedAt.UtcDateTime,
+            NotBefore = issuedAt.UtcDateTime,
+            Expires = expiresAt.UtcDateTime,
             SigningCredentials = signingCredentials,
             Issuer = string.IsNullOrWhiteSpace(_jwtOptions.Issuer) ? null : _jwtOptions.Issuer,
             Audience = string.IsNullOrWhiteSpace(_jwtOptions.Audience) ? null : _jwtOptions.Audience
@@ -63,8 +80,6 @@ public sealed class JwtTokenGenerator(
 
         var tokenHandler = new JwtSecurityTokenHandler();
         var token = tokenHandler.CreateToken(tokenDescriptor);
-        var tokenString = tokenHandler.WriteToken(token);
-
-        return new JwtTokenResult(tokenString, expirationMinutes * 60);
+        return (tokenHandler.WriteToken(token), expiresAt);
     }
 }

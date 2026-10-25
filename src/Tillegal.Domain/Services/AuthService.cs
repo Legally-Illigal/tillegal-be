@@ -1,10 +1,11 @@
 using Tillegal.Domain.Entities;
 using Tillegal.Domain.Exceptions;
 using Tillegal.Domain.Interfaces.Repositories;
+using Tillegal.Domain.Interfaces.Services;
 
 namespace Tillegal.Domain.Services;
 
-public sealed class AuthService(IUserRepository userRepository)
+public sealed class AuthService(IUserRepository userRepository) : IAuthService
 {
     public async Task ValidateEmailAvailabilityAsync(string email, CancellationToken cancellationToken = default)
     {
@@ -19,9 +20,10 @@ public sealed class AuthService(IUserRepository userRepository)
 
     public async Task<User> CreateUserAsync(
         string email,
-        string passwordHash,
+        string? passwordHash,
         string fullName,
         string? phoneNumber = null,
+        string? googleSubject = null,
         CancellationToken cancellationToken = default)
     {
         await ValidateEmailAvailabilityAsync(email, cancellationToken);
@@ -33,6 +35,7 @@ public sealed class AuthService(IUserRepository userRepository)
         {
             RoleId = defaultRole.Id,
             Email = email,
+            GoogleSubject = googleSubject,
             PasswordHash = passwordHash,
             FullName = fullName,
             PhoneNumber = phoneNumber

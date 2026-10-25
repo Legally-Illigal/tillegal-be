@@ -1,5 +1,4 @@
 using FluentAssertions;
-using Mapster;
 using MapsterMapper;
 using NSubstitute;
 using Tillegal.Application.Common.Exceptions;
@@ -17,15 +16,13 @@ public class LoginCommandHandlerTests
     private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
     private readonly IPasswordHashingService _passwordHashingService = Substitute.For<IPasswordHashingService>();
     private readonly IJwtTokenGenerator _jwtTokenGenerator = Substitute.For<IJwtTokenGenerator>();
-    private readonly IMapper _mapper;
+    private readonly IMapper _mapper = new Mapper(MappingConfiguration.Create());
     private readonly AuthService _authService;
     private readonly LoginCommandHandler _handler;
 
     public LoginCommandHandlerTests()
     {
         _authService = new AuthService(_userRepository);
-        var config = MappingConfiguration.Create();
-        _mapper = new Mapper(config);
 
         _handler = new LoginCommandHandler(
             _authService,
@@ -141,11 +138,11 @@ public class LoginCommandHandlerTests
         result.AccessToken.Should().Be("mock.jwt.token");
         result.TokenType.Should().Be("Bearer");
         result.ExpiresIn.Should().Be(3600);
-        result.User.Should().NotBeNull();
+        result.User.Should().BeEquivalentTo(user);
         result.User.Id.Should().Be(user.Id);
         result.User.Email.Should().Be("user@example.com");
         result.User.FullName.Should().Be("Nguyen Van A");
         result.User.PhoneNumber.Should().Be("0123456789");
-        result.User.Role.Should().Be("User");
+        result.User.Role?.Name.Should().Be("User");
     }
 }

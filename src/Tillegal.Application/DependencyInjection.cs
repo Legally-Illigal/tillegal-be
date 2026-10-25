@@ -4,6 +4,7 @@ using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Tillegal.Application.Common.Behaviors;
 using Tillegal.Application.Common.Mappings;
+using Tillegal.Domain.Interfaces.Services;
 using Tillegal.Domain.Services;
 
 namespace Tillegal.Application;
@@ -17,7 +18,7 @@ public static class DependencyInjection
 
         services.AddSingleton(mappingConfiguration);
         services.AddScoped<IMapper, ServiceMapper>();
-        services.AddScoped<AuthService>();
+        services.AddScoped<IAuthService, AuthService>();
         services.AddMediatR(configuration =>
         {
             configuration.RegisterServicesFromAssembly(applicationAssembly);

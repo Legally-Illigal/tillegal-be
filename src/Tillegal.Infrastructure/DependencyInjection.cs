@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Quartz;
 using Tillegal.Application.Common.Interfaces;
+using Tillegal.Infrastructure.ExternalServices.Auth;
 using Tillegal.Infrastructure.ExternalServices.Cache;
 using Tillegal.Infrastructure.ExternalServices.Jobs;
 using Tillegal.Infrastructure.ExternalServices.Mail;
@@ -19,6 +20,7 @@ public static class DependencyInjection
     {
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
         services.AddSingleton<IPasswordHashingService, PasswordHashingService>();
+        services.AddScoped<IGoogleIdentityTokenValidator, GoogleIdentityTokenValidator>();
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddSingleton<CorrelationIdGenerator>();
         services.AddTransient<LoggingHandler>();
