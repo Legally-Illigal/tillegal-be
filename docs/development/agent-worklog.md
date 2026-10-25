@@ -370,3 +370,32 @@ Use this file as a concise handoff record, not as a transcript. Append an entry 
 - **Changed paths:** `src/Tillegal.Application/Features/Auth/Mappings/AuthMappingConfig.cs`; `src/Tillegal.Application/Features/Auth/Mappings/AuthResultMappingSources.cs`; `src/Tillegal.Application/Features/Auth/Commands/Login/LoginCommandHandler.cs`; `src/Tillegal.Application/Features/Auth/Commands/LoginWithGoogle/LoginWithGoogleCommandHandler.cs`; `src/Tillegal.Application/Features/Auth/Commands/RegisterWithGoogle/RegisterWithGoogleCommandHandler.cs`; auth handler tests; `docs/development/agent-worklog.md`.
 - **Checks:** AppHost build passed (0 warnings, 0 errors); Application unit tests passed (44/44); `dotnet format tillegal-be.slnx --verify-no-changes --no-restore` passed.
 - **Remaining / next action:** Git rebase still awaits `git rebase --continue`.
+
+## 2026-10-26 — Merge origin/main into feat/9-message and resolve auth/conversation conflicts
+
+- **Status:** Completed.
+- **Completed:**
+  - Reset branch to pre-merge commit `ba6823a` and cleanly merged `origin/main` (`153097c`).
+  - Resolved conflicts across auth and infrastructure contracts: preserved Google OAuth registration and login services (`IGoogleIdentityTokenValidator`, `IJwtTokenGenerator.Generate`, `GoogleAuthOptions`), retained `IAuthService` and Mapster auth result mappings, and preserved all conversation and AI messaging services (`ConversationService`, `IConversationRepository`, `IConversationMessageRepository`, `ILegalAiService`, `AiServiceOptions`).
+- **Changed paths:**
+  - `docs/development/agent-worklog.md`
+  - `src/Tillegal.Api/Controllers/AuthController.cs`
+  - `src/Tillegal.Api/Mappings/AuthApiMappingConfig.cs`
+  - `src/Tillegal.Api/Middlewares/ExceptionHandlingMiddleware.cs`
+  - `src/Tillegal.AppHost/Configurations/InfrastructureExtensions.cs`
+  - `src/Tillegal.Application/Common/Interfaces/IJwtTokenGenerator.cs`
+  - `src/Tillegal.Application/DependencyInjection.cs`
+  - `src/Tillegal.Application/Features/Auth/Commands/Login/LoginCommand.cs`
+  - `src/Tillegal.Application/Features/Auth/Commands/Login/LoginCommandHandler.cs`
+  - `src/Tillegal.Application/Features/Auth/Mappings/AuthMappingConfig.cs`
+  - `src/Tillegal.Infrastructure/DependencyInjection.cs`
+  - `src/Tillegal.Infrastructure/SystemServices/JwtTokenGenerator.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Auth/AuthMappingTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Auth/LoginCommandHandlerTests.cs`
+- **Checks run:**
+  - `dotnet build tillegal-be.slnx`: Succeeded (0 warnings, 0 errors).
+  - `dotnet test tillegal-be.slnx`: 96/96 tests passed (89 unit tests, 7 architecture tests).
+  - `dotnet format tillegal-be.slnx --verify-no-changes`: Passed with 0 discrepancies.
+- **Next action:**
+  - Push branch to remote (`git push --force-with-lease origin feat/9-message`) to update PR #29.
+
