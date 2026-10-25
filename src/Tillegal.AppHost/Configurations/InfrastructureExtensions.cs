@@ -39,6 +39,12 @@ public static class InfrastructureExtensions
             .Validate(options => !string.IsNullOrWhiteSpace(options.ServiceKey), "Supabase service key is required.")
             .ValidateOnStart();
 
+        services.AddOptions<JwtOptions>()
+            .Bind(configuration.GetSection(JwtOptions.SectionName))
+            .Validate(options => !string.IsNullOrWhiteSpace(options.SigningKey) && options.SigningKey.Length >= 32,
+                "JWT SigningKey must be at least 32 characters long.")
+            .ValidateOnStart();
+
         return services.AddInfrastructure(configuration);
     }
 }

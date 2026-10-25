@@ -1,5 +1,6 @@
 using Mapster;
 using Tillegal.Api.Contracts.Auth;
+using Tillegal.Application.Features.Auth.Commands.Login;
 using Tillegal.Application.Features.Auth.Commands.Register;
 using Tillegal.Application.Features.Auth.Commands.ResendOtp;
 using Tillegal.Application.Features.Auth.Commands.VerifyRegistration;
@@ -18,5 +19,11 @@ public sealed class AuthApiMappingConfig : IRegister
 
         config.NewConfig<ResendOtpApiRequest, ResendOtpCommand>();
         config.NewConfig<ResendOtpResult, ResendOtpApiResponse>();
+
+        config.NewConfig<LoginApiRequest, LoginCommand>();
+        config.NewConfig<LoginResult, LoginApiResponse>()
+            .Map(dest => dest.User, src => src.User)
+            .Map(dest => dest.Message, _ => "Login successful.");
+        config.NewConfig<LoginUserDto, LoginUserApiResponse>();
     }
 }

@@ -53,4 +53,25 @@ public class AuthCommandValidatorTests
         var result = _verifyValidator.Validate(command);
         result.IsValid.Should().BeTrue();
     }
+
+    private readonly Tillegal.Application.Features.Auth.Commands.Login.LoginCommandValidator _loginValidator = new();
+
+    [Theory]
+    [InlineData("", "Password123")]
+    [InlineData("invalid-email", "Password123")]
+    [InlineData("valid@example.com", "")]
+    public void LoginValidator_WhenInvalid_ShouldHaveValidationErrors(string email, string password)
+    {
+        var command = new Tillegal.Application.Features.Auth.Commands.Login.LoginCommand(email, password);
+        var result = _loginValidator.Validate(command);
+        result.IsValid.Should().BeFalse();
+    }
+
+    [Fact]
+    public void LoginValidator_WhenValid_ShouldPass()
+    {
+        var command = new Tillegal.Application.Features.Auth.Commands.Login.LoginCommand("valid@example.com", "ValidPassword123");
+        var result = _loginValidator.Validate(command);
+        result.IsValid.Should().BeTrue();
+    }
 }
