@@ -38,5 +38,6 @@ public sealed class AuthMappingConfig : IRegister
             .Map(dest => dest.Email, src => src.Email ?? string.Empty)
             .Map(dest => dest.FullName, src => src.FullName)
             .Map(dest => dest.Message, _ => "Account registration and verification completed successfully.");
+
     }
 }
