@@ -2,7 +2,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Quartz;
 using Tillegal.Application.Common.Interfaces;
-using Tillegal.Infrastructure.ExternalServices.AiService;
 using Tillegal.Infrastructure.ExternalServices.Auth;
 using Tillegal.Infrastructure.ExternalServices.Cache;
 using Tillegal.Infrastructure.ExternalServices.Jobs;
@@ -30,8 +29,6 @@ public static class DependencyInjection
         services.AddHttpClient<IEmailService, ResendEmailService>()
             .AddHttpMessageHandler<LoggingHandler>();
         services.AddHttpClient<IStorageService, SupabaseStorageService>()
-            .AddHttpMessageHandler<LoggingHandler>();
-        services.AddHttpClient<ILegalAiService, LegalAiServiceClient>()
             .AddHttpMessageHandler<LoggingHandler>();
 
         var timeZoneId = configuration["BackgroundJobs:TimeZone"] ?? "Asia/Ho_Chi_Minh";

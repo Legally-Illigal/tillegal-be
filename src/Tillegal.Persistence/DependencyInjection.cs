@@ -26,8 +26,6 @@ public static class DependencyInjection
         services.AddDbContext<AppDbContext>(options => options.UseNpgsql(connectionString));
         services.AddScoped<IUnitOfWork>(serviceProvider => serviceProvider.GetRequiredService<AppDbContext>());
         services.AddScoped<IUserRepository, UserRepository>();
-        services.AddScoped<IConversationRepository, ConversationRepository>();
-        services.AddScoped<IConversationMessageRepository, ConversationMessageRepository>();
         services.AddScoped<IAuditLogWriter, DbAuditLogWriter>();
         services.AddScoped<IDevelopmentDataSeed, ComprehensiveDatabaseDataSeed>();
         services.AddScoped<DevelopmentDatabaseSeeder>();
