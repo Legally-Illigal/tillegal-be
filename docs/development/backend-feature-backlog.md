@@ -21,7 +21,7 @@ Do not split these feature entries into child implementation tasks unless the us
 |---|---|---|---|
 | BE-F01 | Quản lý tài khoản | Đăng ký, đăng nhập, đăng xuất và quản lý phiên xác thực người dùng. | Một phần |
 | BE-F02 | Xác thực và phân quyền | Xác thực danh tính, kiểm soát quyền truy cập theo vai trò và quyền sở hữu dữ liệu. | Chưa đánh giá |
-| BE-F03 | Quản lý hội thoại | Tạo, xem, cập nhật và quản lý các cuộc hội thoại của người dùng. | Chưa đánh giá |
+| BE-F03 | Quản lý hội thoại | Tạo, xem, cập nhật và quản lý các cuộc hội thoại của người dùng. | Hoàn thành |
 | BE-F04 | Quản lý tin nhắn và lịch sử | Lưu trữ, truy xuất tin nhắn và cung cấp ngữ cảnh hội thoại cho các lượt trao đổi tiếp theo. | Chưa đánh giá |
 | BE-F05 | Tiếp nhận và xử lý yêu cầu pháp lý | Cung cấp API tiếp nhận yêu cầu từ Frontend và điều phối yêu cầu đến AI Service. | Chưa đánh giá |
 | BE-F06 | Tích hợp AI Service | Giao tiếp với AI Service để thực hiện các chức năng hỏi đáp, tư vấn pháp lý và kiểm chứng trích dẫn. | Chưa đánh giá |
