@@ -1,4 +1,4 @@
-# Agent Work Log
+ # Agent Work Log
 
 Use this file as a concise handoff record, not as a transcript. Append an entry for each task that changes repository content. Keep current work, blockers, next action, changed paths, and checks explicit so the next agent can continue without rereading the entire repository.
 
