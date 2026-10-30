@@ -9,5 +9,6 @@ public sealed class MessageApiMappingConfig : IRegister
     public void Register(TypeAdapterConfig config)
     {
         config.NewConfig<MessageDto, MessageApiResponse>();
+        config.NewConfig<CursorPagedMessagesDto, CursorPagedMessagesApiResponse>();
     }
 }

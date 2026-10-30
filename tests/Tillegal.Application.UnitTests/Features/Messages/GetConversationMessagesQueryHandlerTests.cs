@@ -7,6 +7,7 @@ using Tillegal.Application.Common.Interfaces;
 using Tillegal.Application.Common.Mappings;
 using Tillegal.Application.Features.Messages.Mappings;
 using Tillegal.Application.Features.Messages.Queries.GetConversationMessages;
+using Tillegal.Domain.Common;
 using Tillegal.Domain.Entities;
 using Tillegal.Domain.Interfaces.Services;
 using Xunit;
@@ -80,7 +81,7 @@ public sealed class GetConversationMessagesQueryHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenValid_ShouldReturnMessages()
+    public async Task Handle_WhenValid_ShouldReturnCursorPagedMessages()
     {
         var userId = Guid.CreateVersion7();
         var conversationId = Guid.CreateVersion7();
@@ -94,15 +95,20 @@ public sealed class GetConversationMessagesQueryHandlerTests
         var msg2 = ConversationMessage.CreateAssistantMessage(conversationId, "Assistant reply");
         var messages = new List<ConversationMessage> { msg1, msg2 };
 
-        _messageService.GetMessagesByConversationIdAsync(conversationId, Arg.Any<CancellationToken>())
-            .Returns(messages);
+        var pagedResult = new CursorPagedResult<ConversationMessage>(messages, true, msg1.Id);
 
-        var query = new GetConversationMessagesQuery(conversationId);
+        _messageService.GetMessagesByConversationIdAsync(conversationId, null, 5, Arg.Any<CancellationToken>())
+            .Returns(pagedResult);
+
+        var query = new GetConversationMessagesQuery(conversationId, null, 5);
 
         var result = await _handler.Handle(query, CancellationToken.None);
 
-        result.Should().HaveCount(2);
-        result[0].Content.Should().Be("User question");
-        result[1].Content.Should().Be("Assistant reply");
+        result.Should().NotBeNull();
+        result.Data.Should().HaveCount(2);
+        result.Data[0].Content.Should().Be("User question");
+        result.Data[1].Content.Should().Be("Assistant reply");
+        result.HasMore.Should().BeTrue();
+        result.NextCursor.Should().Be(msg1.Id);
     }
 }

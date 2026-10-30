@@ -11,9 +11,9 @@ public sealed class GetConversationMessagesQueryHandler(
     ICurrentUserService currentUserService,
     IConversationService conversationService,
     IConversationMessageService messageService,
-    IMapper mapper) : IRequestHandler<GetConversationMessagesQuery, IReadOnlyList<MessageDto>>
+    IMapper mapper) : IRequestHandler<GetConversationMessagesQuery, CursorPagedMessagesDto>
 {
-    public async Task<IReadOnlyList<MessageDto>> Handle(
+    public async Task<CursorPagedMessagesDto> Handle(
         GetConversationMessagesQuery request,
         CancellationToken cancellationToken)
     {
@@ -34,10 +34,14 @@ public sealed class GetConversationMessagesQueryHandler(
             throw new ForbiddenAccessException("You do not have access to this conversation.");
         }
 
-        var messages = await messageService.GetMessagesByConversationIdAsync(
+        var pagedResult = await messageService.GetMessagesByConversationIdAsync(
             request.ConversationId,
+            request.Cursor,
+            request.Limit,
             cancellationToken);
 
-        return mapper.Map<IReadOnlyList<MessageDto>>(messages);
+        var messageDtos = mapper.Map<IReadOnlyList<MessageDto>>(pagedResult.Items);
+
+        return new CursorPagedMessagesDto(messageDtos, pagedResult.HasMore, pagedResult.NextCursor);
     }
 }

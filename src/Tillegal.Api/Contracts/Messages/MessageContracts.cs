@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Tillegal.Api.Contracts.Messages;
 
@@ -19,3 +20,8 @@ public sealed record MessageApiResponse(
     JsonDocument? Citations,
     DateTimeOffset CreatedAt,
     DateTimeOffset? UpdatedAt);
+
+public sealed record CursorPagedMessagesApiResponse(
+    [property: JsonPropertyName("data")] IReadOnlyList<MessageApiResponse> Data,
+    [property: JsonPropertyName("has_more")] bool HasMore,
+    [property: JsonPropertyName("next_cursor")] Guid? NextCursor);

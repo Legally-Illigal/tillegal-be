@@ -125,17 +125,22 @@ public sealed class ConversationsController(ISender mediator, IMapper mapper)
     }
 
     [HttpGet("{conversationId:guid}/messages")]
-    [ProducesResponseType(typeof(IReadOnlyList<MessageApiResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(CursorPagedMessagesApiResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetMessages(
         [FromRoute] Guid conversationId,
+        [FromQuery] Guid? cursor,
+        [FromQuery] int? limit,
+        [FromQuery] int? pageSize,
         CancellationToken cancellationToken)
     {
-        var query = new GetConversationMessagesQuery(conversationId);
+        var effectiveLimit = limit ?? pageSize ?? 5;
+        var query = new GetConversationMessagesQuery(conversationId, cursor, effectiveLimit);
         var result = await Mediator.Send(query, cancellationToken);
-        var response = Mapper.Map<IReadOnlyList<MessageApiResponse>>(result);
+        var response = Mapper.Map<CursorPagedMessagesApiResponse>(result);
 
         return Ok(response);
     }
@@ -197,4 +202,3 @@ public sealed class ConversationsController(ISender mediator, IMapper mapper)
         return NoContent();
     }
 }
-

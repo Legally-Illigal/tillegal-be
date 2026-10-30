@@ -135,7 +135,7 @@ public sealed class MessageCommandValidatorTests
     [Fact]
     public void GetConversationMessages_WhenValid_ShouldNotHaveErrors()
     {
-        var query = new GetConversationMessagesQuery(Guid.CreateVersion7());
+        var query = new GetConversationMessagesQuery(Guid.CreateVersion7(), null, 5);
         var result = _getMessagesValidator.Validate(query);
         result.IsValid.Should().BeTrue();
     }
@@ -143,10 +143,30 @@ public sealed class MessageCommandValidatorTests
     [Fact]
     public void GetConversationMessages_WhenConversationIdEmpty_ShouldHaveError()
     {
-        var query = new GetConversationMessagesQuery(Guid.Empty);
+        var query = new GetConversationMessagesQuery(Guid.Empty, null, 5);
         var result = _getMessagesValidator.Validate(query);
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.PropertyName == nameof(query.ConversationId));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void GetConversationMessages_WhenLimitZeroOrNegative_ShouldHaveError(int invalidLimit)
+    {
+        var query = new GetConversationMessagesQuery(Guid.CreateVersion7(), null, invalidLimit);
+        var result = _getMessagesValidator.Validate(query);
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == nameof(query.Limit));
+    }
+
+    [Fact]
+    public void GetConversationMessages_WhenLimitExceedsFifty_ShouldHaveError()
+    {
+        var query = new GetConversationMessagesQuery(Guid.CreateVersion7(), null, 51);
+        var result = _getMessagesValidator.Validate(query);
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == nameof(query.Limit));
     }
 
     [Fact]

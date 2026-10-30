@@ -1,6 +1,7 @@
 namespace Tillegal.Persistence.Repositories;
 
 using Microsoft.EntityFrameworkCore;
+using Tillegal.Domain.Common;
 using Tillegal.Domain.Entities;
 using Tillegal.Domain.Interfaces.Repositories;
 using Tillegal.Persistence.Context;
@@ -28,6 +29,52 @@ public sealed class ConversationMessageRepository(AppDbContext dbContext) : ICon
             .ToListAsync(cancellationToken);
 
         return dataModels.Select(MapToEntity).ToList();
+    }
+
+    public async Task<CursorPagedResult<ConversationMessage>> GetMessagesByConversationIdAsync(
+        Guid conversationId,
+        Guid? cursor,
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        var effectiveLimit = limit <= 0 ? 5 : Math.Min(limit, 50);
+
+        var query = dbContext.ConversationMessages
+            .AsNoTracking()
+            .Where(m => m.ConversationId == conversationId);
+
+        if (cursor.HasValue && cursor.Value != Guid.Empty)
+        {
+            var cursorMessage = await dbContext.ConversationMessages
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m => m.Id == cursor.Value, cancellationToken);
+
+            if (cursorMessage is not null)
+            {
+                var cursorCreatedAt = cursorMessage.CreatedAt;
+                var cursorId = cursorMessage.Id;
+
+                query = query.Where(m => m.CreatedAt < cursorCreatedAt
+                    || (m.CreatedAt == cursorCreatedAt && m.Id < cursorId));
+            }
+        }
+
+        var rawItems = await query
+            .OrderByDescending(m => m.CreatedAt)
+            .ThenByDescending(m => m.Id)
+            .Take(effectiveLimit + 1)
+            .ToListAsync(cancellationToken);
+
+        var hasMore = rawItems.Count > effectiveLimit;
+        var pagedItems = hasMore ? rawItems.Take(effectiveLimit).ToList() : rawItems;
+
+        // Invert to chronological order (oldest to newest):
+        pagedItems.Reverse();
+
+        var nextCursor = hasMore && pagedItems.Count > 0 ? pagedItems[0].Id : (Guid?)null;
+        var entityItems = pagedItems.Select(MapToEntity).ToList();
+
+        return new CursorPagedResult<ConversationMessage>(entityItems, hasMore, nextCursor);
     }
 
     public async Task AddAsync(ConversationMessage message, CancellationToken cancellationToken = default)

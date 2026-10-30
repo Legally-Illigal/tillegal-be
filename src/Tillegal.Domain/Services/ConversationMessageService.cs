@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Tillegal.Domain.Common;
 using Tillegal.Domain.Entities;
 using Tillegal.Domain.Interfaces.Repositories;
 using Tillegal.Domain.Interfaces.Services;
@@ -32,6 +33,20 @@ public sealed class ConversationMessageService(
         CancellationToken cancellationToken = default)
     {
         return await messageRepository.GetMessagesByConversationIdAsync(conversationId, cancellationToken);
+    }
+
+    public async Task<CursorPagedResult<ConversationMessage>> GetMessagesByConversationIdAsync(
+        Guid conversationId,
+        Guid? cursor,
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        var effectiveLimit = limit <= 0 ? 5 : Math.Min(limit, 50);
+        return await messageRepository.GetMessagesByConversationIdAsync(
+            conversationId,
+            cursor,
+            effectiveLimit,
+            cancellationToken);
     }
 
     public async Task<ConversationMessage> UpdateMessageAsync(

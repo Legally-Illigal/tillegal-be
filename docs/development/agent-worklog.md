@@ -319,3 +319,38 @@ Use this file as a concise handoff record, not as a transcript. Append an entry 
 - **Remaining / next action:**
   - Implement AI orchestration and context retrieval for legal queries (BE-F05 & BE-F06).
 
+
+## 2026-10-30 — Implement Cursor-based Pagination for Messages API
+
+- **Status:** Completed for cursor-based message pagination.
+- **Completed:**
+  - Added `CursorPagedResult<T>` domain record in `Tillegal.Domain.Common`.
+  - Added `GetMessagesByConversationIdAsync(Guid conversationId, Guid? cursor, int limit, CancellationToken cancellationToken)` in `IConversationMessageRepository`, `ConversationMessageRepository`, `IConversationMessageService`, and `ConversationMessageService`.
+  - Implemented SQL query pattern in EF Core: filters messages by `CreatedAt < cursorMessage.CreatedAt || (CreatedAt == cursorMessage.CreatedAt && Id < cursorMessage.Id)`, orders by `CreatedAt DESC, Id DESC`, fetches `limit + 1` records to determine `has_more`, takes `limit` items and reverses the list to return in chronological order (oldest to newest), with `next_cursor` pointing to the oldest message in the batch (`data[0].Id`).
+  - Added `CursorPagedMessagesDto` in `Tillegal.Application/Features/Messages/Models/`.
+  - Updated `GetConversationMessagesQuery` to accept `Cursor` and `Limit` (defaults to 5, max 50), and updated its validator and handler.
+  - Added `CursorPagedMessagesApiResponse` with `[JsonPropertyName("data")]`, `[JsonPropertyName("has_more")]`, `[JsonPropertyName("next_cursor")]` to match the exact frontend JSON contract.
+  - Updated `ConversationsController.GetMessages` to accept `[FromQuery] Guid? cursor`, `[FromQuery] int? limit`, `[FromQuery] int? pageSize` (defaulting to 5), returning `CursorPagedMessagesApiResponse`.
+  - Updated unit tests in `GetConversationMessagesQueryHandlerTests` and `MessageCommandValidatorTests`.
+- **Changed paths:**
+  - `src/Tillegal.Domain/Common/CursorPagedResult.cs`
+  - `src/Tillegal.Domain/Interfaces/Repositories/IConversationMessageRepository.cs`
+  - `src/Tillegal.Domain/Interfaces/Services/IConversationMessageService.cs`
+  - `src/Tillegal.Domain/Services/ConversationMessageService.cs`
+  - `src/Tillegal.Persistence/Repositories/ConversationMessageRepository.cs`
+  - `src/Tillegal.Application/Features/Messages/Models/CursorPagedMessagesDto.cs`
+  - `src/Tillegal.Application/Features/Messages/Queries/GetConversationMessages/GetConversationMessagesQuery.cs`
+  - `src/Tillegal.Application/Features/Messages/Queries/GetConversationMessages/GetConversationMessagesQueryValidator.cs`
+  - `src/Tillegal.Application/Features/Messages/Queries/GetConversationMessages/GetConversationMessagesQueryHandler.cs`
+  - `src/Tillegal.Api/Contracts/Messages/MessageContracts.cs`
+  - `src/Tillegal.Api/Mappings/MessageApiMappingConfig.cs`
+  - `src/Tillegal.Api/Controllers/ConversationsController.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Messages/GetConversationMessagesQueryHandlerTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Messages/MessageCommandValidatorTests.cs`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet build tillegal-be.slnx`: Succeeded (0 warnings, 0 errors).
+  - `dotnet test tillegal-be.slnx`: 164/164 tests passed (157 unit tests, 7 architecture tests).
+  - `dotnet format tillegal-be.slnx --verify-no-changes`: Passed with 0 discrepancies.
+- **Remaining / next action:**
+  - Frontend integration for infinite scroll chat loading using `next_cursor` and `has_more`.

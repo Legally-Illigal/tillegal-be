@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Tillegal.Domain.Common;
 using Tillegal.Domain.Entities;
 
 namespace Tillegal.Domain.Interfaces.Services;
@@ -18,6 +19,12 @@ public interface IConversationMessageService
 
     Task<IReadOnlyList<ConversationMessage>> GetMessagesByConversationIdAsync(
         Guid conversationId,
+        CancellationToken cancellationToken = default);
+
+    Task<CursorPagedResult<ConversationMessage>> GetMessagesByConversationIdAsync(
+        Guid conversationId,
+        Guid? cursor,
+        int limit,
         CancellationToken cancellationToken = default);
 
     Task<ConversationMessage> UpdateMessageAsync(
