@@ -27,6 +27,7 @@ public static class DependencyInjection
         services.AddScoped<IUnitOfWork>(serviceProvider => serviceProvider.GetRequiredService<AppDbContext>());
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IConversationRepository, ConversationRepository>();
+        services.AddScoped<IConversationMessageRepository, ConversationMessageRepository>();
         services.AddScoped<IAuditLogWriter, DbAuditLogWriter>();
         services.AddScoped<IDevelopmentDataSeed, ComprehensiveDatabaseDataSeed>();
         services.AddScoped<DevelopmentDatabaseSeeder>();

@@ -20,6 +20,7 @@ public static class DependencyInjection
         services.AddScoped<IMapper, ServiceMapper>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IConversationService, ConversationService>();
+        services.AddScoped<IConversationMessageService, ConversationMessageService>();
         services.AddMediatR(configuration =>
         {
             configuration.RegisterServicesFromAssembly(applicationAssembly);

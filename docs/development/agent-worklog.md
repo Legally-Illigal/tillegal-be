@@ -243,3 +243,114 @@ Use this file as a concise handoff record, not as a transcript. Append an entry 
 - **Changed paths:** `src/Tillegal.Application/Features/Auth/Mappings/AuthMappingConfig.cs`; `src/Tillegal.Application/Features/Auth/Mappings/AuthResultMappingSources.cs`; `src/Tillegal.Application/Features/Auth/Commands/Login/LoginCommandHandler.cs`; `src/Tillegal.Application/Features/Auth/Commands/LoginWithGoogle/LoginWithGoogleCommandHandler.cs`; `src/Tillegal.Application/Features/Auth/Commands/RegisterWithGoogle/RegisterWithGoogleCommandHandler.cs`; auth handler tests; `docs/development/agent-worklog.md`.
 - **Checks:** AppHost build passed (0 warnings, 0 errors); Application unit tests passed (44/44); `dotnet format tillegal-be.slnx --verify-no-changes --no-restore` passed.
 - **Remaining / next action:** Git rebase still awaits `git rebase --continue`.
+
+## 2026-10-28 — Implement Message CRUD (BE-F04 scope)
+
+- **Status:** Completed for Message CRUD scope (part of BE-F04).
+- **Completed:**
+  - Enhanced `ConversationMessage` domain entity with property encapsulation, invariant validation, static factories (`Create`, `CreateUserMessage`, `CreateAssistantMessage`), and `UpdateContent` domain mutation method.
+  - Declared `IConversationMessageRepository` repository interface in `Tillegal.Domain` and implemented it in `Tillegal.Persistence/Repositories/ConversationMessageRepository.cs` with EF Core query filters for soft-delete.
+  - Declared `IConversationMessageService` domain service interface and implemented `ConversationMessageService` in `Tillegal.Domain/Services/`.
+  - Registered `IConversationMessageRepository` in Persistence DI and `IConversationMessageService` in Application DI.
+  - Implemented CQRS Message operations under `Tillegal.Application/Features/Messages/`:
+    - `CreateMessageCommand`, `CreateMessageCommandValidator`, `CreateMessageCommandHandler`
+    - `UpdateMessageCommand`, `UpdateMessageCommandValidator`, `UpdateMessageCommandHandler`
+    - `DeleteMessageCommand`, `DeleteMessageCommandValidator`, `DeleteMessageCommandHandler`
+    - `GetConversationMessagesQuery`, `GetConversationMessagesQueryValidator`, `GetConversationMessagesQueryHandler`
+    - `GetMessageByIdQuery`, `GetMessageByIdQueryValidator`, `GetMessageByIdQueryHandler`
+    - Enforced authentication via `ICurrentUserService`, verified conversation ownership (`NotFoundException` / `ForbiddenAccessException`), and verified message-to-conversation association.
+  - Configured Mapster mappings:
+    - Domain <-> Application: `ConversationMessage` -> `MessageDto` in `MessageMappingConfig.cs`.
+    - Api <-> Application: `MessageDto` -> `MessageApiResponse` in `MessageApiMappingConfig.cs`.
+  - Implemented RESTful endpoints on `ConversationsController` under route `api/conversations/{conversationId:guid}/messages`:
+    - `POST /api/conversations/{conversationId}/messages` (201 Created)
+    - `GET /api/conversations/{conversationId}/messages` (200 OK)
+    - `GET /api/conversations/{conversationId}/messages/{messageId}` (200 OK)
+    - `PUT /api/conversations/{conversationId}/messages/{messageId}` (200 OK)
+    - `DELETE /api/conversations/{conversationId}/messages/{messageId}` (204 NoContent)
+  - Added unit test suite covering:
+    - Domain invariants & factory methods (`ConversationMessageTests.cs` - 10 tests)
+    - FluentValidation rules (`MessageCommandValidatorTests.cs` - 15 tests)
+    - Mapster mappings (`MessageMappingTests.cs` - 1 test)
+    - CQRS Handlers with authentication, authorization, not found, and happy paths (Create, GetMessages, GetById, Update, Delete - 21 tests)
+  - Updated `docs/development/backend-feature-backlog.md` status for BE-F04 to "Một phần".
+- **Changed paths:**
+  - `docs/development/agent-worklog.md`
+  - `docs/development/backend-feature-backlog.md`
+  - `src/Tillegal.Domain/Entities/ConversationMessage.cs`
+  - `src/Tillegal.Domain/Interfaces/Repositories/IConversationMessageRepository.cs`
+  - `src/Tillegal.Domain/Interfaces/Services/IConversationMessageService.cs`
+  - `src/Tillegal.Domain/Services/ConversationMessageService.cs`
+  - `src/Tillegal.Persistence/Repositories/ConversationMessageRepository.cs`
+  - `src/Tillegal.Persistence/DependencyInjection.cs`
+  - `src/Tillegal.Application/DependencyInjection.cs`
+  - `src/Tillegal.Application/Features/Messages/Models/MessageDto.cs`
+  - `src/Tillegal.Application/Features/Messages/Mappings/MessageMappingConfig.cs`
+  - `src/Tillegal.Application/Features/Messages/Commands/CreateMessage/CreateMessageCommand.cs`
+  - `src/Tillegal.Application/Features/Messages/Commands/CreateMessage/CreateMessageCommandValidator.cs`
+  - `src/Tillegal.Application/Features/Messages/Commands/CreateMessage/CreateMessageCommandHandler.cs`
+  - `src/Tillegal.Application/Features/Messages/Commands/UpdateMessage/UpdateMessageCommand.cs`
+  - `src/Tillegal.Application/Features/Messages/Commands/UpdateMessage/UpdateMessageCommandValidator.cs`
+  - `src/Tillegal.Application/Features/Messages/Commands/UpdateMessage/UpdateMessageCommandHandler.cs`
+  - `src/Tillegal.Application/Features/Messages/Commands/DeleteMessage/DeleteMessageCommand.cs`
+  - `src/Tillegal.Application/Features/Messages/Commands/DeleteMessage/DeleteMessageCommandValidator.cs`
+  - `src/Tillegal.Application/Features/Messages/Commands/DeleteMessage/DeleteMessageCommandHandler.cs`
+  - `src/Tillegal.Application/Features/Messages/Queries/GetConversationMessages/GetConversationMessagesQuery.cs`
+  - `src/Tillegal.Application/Features/Messages/Queries/GetConversationMessages/GetConversationMessagesQueryValidator.cs`
+  - `src/Tillegal.Application/Features/Messages/Queries/GetConversationMessages/GetConversationMessagesQueryHandler.cs`
+  - `src/Tillegal.Application/Features/Messages/Queries/GetMessageById/GetMessageByIdQuery.cs`
+  - `src/Tillegal.Application/Features/Messages/Queries/GetMessageById/GetMessageByIdQueryValidator.cs`
+  - `src/Tillegal.Application/Features/Messages/Queries/GetMessageById/GetMessageByIdQueryHandler.cs`
+  - `src/Tillegal.Api/Contracts/Messages/MessageContracts.cs`
+  - `src/Tillegal.Api/Mappings/MessageApiMappingConfig.cs`
+  - `src/Tillegal.Api/Controllers/ConversationsController.cs`
+  - `tests/Tillegal.Application.UnitTests/Domain/ConversationMessageTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Messages/MessageCommandValidatorTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Messages/MessageMappingTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Messages/CreateMessageCommandHandlerTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Messages/GetConversationMessagesQueryHandlerTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Messages/GetMessageByIdQueryHandlerTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Messages/UpdateMessageCommandHandlerTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Messages/DeleteMessageCommandHandlerTests.cs`
+- **Checks run:**
+  - `dotnet build tillegal-be.slnx`: Succeeded (0 warnings, 0 errors).
+  - `dotnet test tillegal-be.slnx`: 161/161 tests passed (154 unit tests, 7 architecture tests).
+  - `dotnet format tillegal-be.slnx --verify-no-changes`: Passed with 0 discrepancies.
+- **Remaining / next action:**
+  - Implement AI orchestration and context retrieval for legal queries (BE-F05 & BE-F06).
+
+
+## 2026-10-30 — Implement Cursor-based Pagination for Messages API
+
+- **Status:** Completed for cursor-based message pagination.
+- **Completed:**
+  - Added `CursorPagedResult<T>` domain record in `Tillegal.Domain.Common`.
+  - Added `GetMessagesByConversationIdAsync(Guid conversationId, Guid? cursor, int limit, CancellationToken cancellationToken)` in `IConversationMessageRepository`, `ConversationMessageRepository`, `IConversationMessageService`, and `ConversationMessageService`.
+  - Implemented SQL query pattern in EF Core: filters messages by `CreatedAt < cursorMessage.CreatedAt || (CreatedAt == cursorMessage.CreatedAt && Id < cursorMessage.Id)`, orders by `CreatedAt DESC, Id DESC`, fetches `limit + 1` records to determine `has_more`, takes `limit` items and reverses the list to return in chronological order (oldest to newest), with `next_cursor` pointing to the oldest message in the batch (`data[0].Id`).
+  - Added `CursorPagedMessagesDto` in `Tillegal.Application/Features/Messages/Models/`.
+  - Updated `GetConversationMessagesQuery` to accept `Cursor` and `Limit` (defaults to 5, max 50), and updated its validator and handler.
+  - Added `CursorPagedMessagesApiResponse` with `[JsonPropertyName("data")]`, `[JsonPropertyName("has_more")]`, `[JsonPropertyName("next_cursor")]` to match the exact frontend JSON contract.
+  - Updated `ConversationsController.GetMessages` to accept `[FromQuery] Guid? cursor`, `[FromQuery] int? limit`, `[FromQuery] int? pageSize` (defaulting to 5), returning `CursorPagedMessagesApiResponse`.
+  - Updated unit tests in `GetConversationMessagesQueryHandlerTests` and `MessageCommandValidatorTests`.
+- **Changed paths:**
+  - `src/Tillegal.Domain/Common/CursorPagedResult.cs`
+  - `src/Tillegal.Domain/Interfaces/Repositories/IConversationMessageRepository.cs`
+  - `src/Tillegal.Domain/Interfaces/Services/IConversationMessageService.cs`
+  - `src/Tillegal.Domain/Services/ConversationMessageService.cs`
+  - `src/Tillegal.Persistence/Repositories/ConversationMessageRepository.cs`
+  - `src/Tillegal.Application/Features/Messages/Models/CursorPagedMessagesDto.cs`
+  - `src/Tillegal.Application/Features/Messages/Queries/GetConversationMessages/GetConversationMessagesQuery.cs`
+  - `src/Tillegal.Application/Features/Messages/Queries/GetConversationMessages/GetConversationMessagesQueryValidator.cs`
+  - `src/Tillegal.Application/Features/Messages/Queries/GetConversationMessages/GetConversationMessagesQueryHandler.cs`
+  - `src/Tillegal.Api/Contracts/Messages/MessageContracts.cs`
+  - `src/Tillegal.Api/Mappings/MessageApiMappingConfig.cs`
+  - `src/Tillegal.Api/Controllers/ConversationsController.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Messages/GetConversationMessagesQueryHandlerTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Messages/MessageCommandValidatorTests.cs`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet build tillegal-be.slnx`: Succeeded (0 warnings, 0 errors).
+  - `dotnet test tillegal-be.slnx`: 164/164 tests passed (157 unit tests, 7 architecture tests).
+  - `dotnet format tillegal-be.slnx --verify-no-changes`: Passed with 0 discrepancies.
+- **Remaining / next action:**
+  - Frontend integration for infinite scroll chat loading using `next_cursor` and `has_more`.
