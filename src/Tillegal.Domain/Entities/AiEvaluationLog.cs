@@ -1,16 +1,96 @@
 using Tillegal.Domain.Common;
+using Tillegal.Domain.Exceptions;
 
 namespace Tillegal.Domain.Entities;
 
 public sealed class AiEvaluationLog : BaseEntity
 {
-    public Guid MessageId { get; set; }
+    private AiEvaluationLog() : base()
+    {
+    }
 
-    public Guid? EvaluatorUserId { get; set; }
+    public AiEvaluationLog(
+        Guid id,
+        Guid messageId,
+        Guid? evaluatorUserId,
+        bool? isHelpful,
+        int? rating,
+        string? feedbackComment,
+        DateTimeOffset createdAt,
+        DateTimeOffset? updatedAt,
+        DateTimeOffset? deletedAt)
+        : base(id, createdAt, updatedAt, deletedAt)
+    {
+        MessageId = messageId;
+        EvaluatorUserId = evaluatorUserId;
+        IsHelpful = isHelpful;
+        Rating = rating;
+        FeedbackComment = feedbackComment;
+    }
 
-    public bool? IsHelpful { get; set; }
+    public static AiEvaluationLog Create(
+        Guid messageId,
+        Guid? evaluatorUserId,
+        bool? isHelpful,
+        int? rating,
+        string? feedbackComment = null)
+    {
+        if (messageId == Guid.Empty)
+        {
+            throw new DomainException("MessageId cannot be empty.");
+        }
 
-    public int? Rating { get; set; }
+        ValidateRating(rating);
+        ValidateHasAtLeastOneAttribute(isHelpful, rating, feedbackComment);
 
-    public string? FeedbackComment { get; set; }
+        return new AiEvaluationLog
+        {
+            MessageId = messageId,
+            EvaluatorUserId = evaluatorUserId,
+            IsHelpful = isHelpful,
+            Rating = rating,
+            FeedbackComment = string.IsNullOrWhiteSpace(feedbackComment) ? null : feedbackComment.Trim()
+        };
+    }
+
+    public Guid MessageId { get; private set; }
+
+    public Guid? EvaluatorUserId { get; private set; }
+
+    public bool? IsHelpful { get; private set; }
+
+    public int? Rating { get; private set; }
+
+    public string? FeedbackComment { get; private set; }
+
+    public void Update(
+        bool? isHelpful,
+        int? rating,
+        string? feedbackComment)
+    {
+        ValidateRating(rating);
+        ValidateHasAtLeastOneAttribute(isHelpful, rating, feedbackComment);
+
+        IsHelpful = isHelpful;
+        Rating = rating;
+        FeedbackComment = string.IsNullOrWhiteSpace(feedbackComment) ? null : feedbackComment.Trim();
+
+        MarkUpdated();
+    }
+
+    private static void ValidateRating(int? rating)
+    {
+        if (rating.HasValue && rating is < 1 or > 5)
+        {
+            throw new DomainException("Rating must be between 1 and 5.");
+        }
+    }
+
+    private static void ValidateHasAtLeastOneAttribute(bool? isHelpful, int? rating, string? feedbackComment)
+    {
+        if (!isHelpful.HasValue && !rating.HasValue && string.IsNullOrWhiteSpace(feedbackComment))
+        {
+            throw new DomainException("At least one evaluation attribute (isHelpful, rating, or feedbackComment) must be provided.");
+        }
+    }
 }

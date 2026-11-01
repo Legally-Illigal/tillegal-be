@@ -354,3 +354,71 @@ Use this file as a concise handoff record, not as a transcript. Append an entry 
   - `dotnet format tillegal-be.slnx --verify-no-changes`: Passed with 0 discrepancies.
 - **Remaining / next action:**
   - Frontend integration for infinite scroll chat loading using `next_cursor` and `has_more`.
+
+
+## 2026-10-31 — Implement AI Evaluation Management (User and Admin)
+
+- **Status:** Completed for AI Evaluation Management.
+- **Completed:**
+  - Enhanced `AiEvaluationLog` domain entity with encapsulation, invariant validation (MessageId not empty, rating between 1 and 5, at least one attribute provided), static factory `Create`, and expressive `Update` and `SoftDelete` mutation methods.
+  - Declared `IAiEvaluationRepository` in `Tillegal.Domain/Interfaces/Repositories/` and implemented it in `Tillegal.Persistence/Repositories/AiEvaluationRepository.cs` with query filtering (isHelpful, rating, evaluatorUserId), paging, count, summary metrics, and soft-delete support. Registered in Persistence DI.
+  - Declared `IAiEvaluationService` in `Tillegal.Domain/Interfaces/Services/` and implemented `AiEvaluationService` in `Tillegal.Domain/Services/`. Registered in Application DI.
+  - Added `Role` property to `ICurrentUserService` and `CurrentUserService` to enable role-based authorization in CQRS handlers.
+  - Implemented CQRS operations under `Tillegal.Application/Features/AiEvaluations/`:
+    - `CreateEvaluationCommand`, `CreateEvaluationCommandValidator`, `CreateEvaluationCommandHandler`: Validates authentication, message existence, verifies role is 'assistant', verifies conversation ownership (or Admin role), checks single evaluation per message invariant, commits via `IUnitOfWork`.
+    - `UpdateEvaluationCommand`, `UpdateEvaluationCommandValidator`, `UpdateEvaluationCommandHandler`: Enforces evaluation ownership or Admin role.
+    - `DeleteEvaluationCommand`, `DeleteEvaluationCommandValidator`, `DeleteEvaluationCommandHandler`: Soft-deletes evaluation for owner or Admin.
+    - `GetEvaluationByIdQuery`, `GetEvaluationByIdQueryValidator`, `GetEvaluationByIdQueryHandler`
+    - `GetEvaluationByMessageIdQuery`, `GetEvaluationByMessageIdQueryValidator`, `GetEvaluationByMessageIdQueryHandler`
+    - `GetAiEvaluationsQuery`, `GetAiEvaluationsQueryValidator`, `GetAiEvaluationsQueryHandler`: Paged list with filters (isHelpful, rating, evaluatorUserId); non-admin users are scoped to their own evaluations, Admin can query all.
+    - `GetAiEvaluationSummaryQuery`, `GetAiEvaluationSummaryQueryHandler`: Returns total evaluations, average rating, helpful and unhelpful counts.
+  - Configured Mapster mappings:
+    - Application: `AiEvaluationMappingConfig` (`AiEvaluationLog` -> `AiEvaluationDto`).
+    - API: `AiEvaluationApiMappingConfig` (`CreateAiEvaluationApiRequest` -> `CreateEvaluationCommand`, DTOs -> API responses).
+  - Implemented `AiEvaluationsController` under route `api/ai-evaluations`:
+    - `POST /api/ai-evaluations` (201 Created)
+    - `GET /api/ai-evaluations` (200 OK)
+    - `GET /api/ai-evaluations/summary` (200 OK)
+    - `GET /api/ai-evaluations/{id:guid}` (200 OK)
+    - `GET /api/ai-evaluations/message/{messageId:guid}` (200 OK)
+    - `PUT /api/ai-evaluations/{id:guid}` (200 OK)
+    - `DELETE /api/ai-evaluations/{id:guid}` (204 NoContent)
+  - Added comprehensive test suite:
+    - Domain tests: `AiEvaluationLogTests.cs` (8 tests).
+    - Validator tests: `AiEvaluationCommandValidatorTests.cs` (15 tests).
+    - Mapping tests: `AiEvaluationMappingTests.cs` (1 test).
+    - Handler unit tests: `CreateEvaluationCommandHandlerTests.cs` (8 tests), `UpdateEvaluationCommandHandlerTests.cs` (5 tests), `DeleteEvaluationCommandHandlerTests.cs` (5 tests), `GetEvaluationQueryHandlerTests.cs` (6 tests).
+- **Changed paths:**
+  - `src/Tillegal.Domain/Entities/AiEvaluationLog.cs`
+  - `src/Tillegal.Domain/Interfaces/Repositories/IAiEvaluationRepository.cs`
+  - `src/Tillegal.Domain/Interfaces/Services/IAiEvaluationService.cs`
+  - `src/Tillegal.Domain/Services/AiEvaluationService.cs`
+  - `src/Tillegal.Persistence/Repositories/AiEvaluationRepository.cs`
+  - `src/Tillegal.Persistence/DependencyInjection.cs`
+  - `src/Tillegal.Application/Common/Interfaces/ICurrentUserService.cs`
+  - `src/Tillegal.Application/DependencyInjection.cs`
+  - `src/Tillegal.Application/Features/AiEvaluations/Models/AiEvaluationDto.cs`
+  - `src/Tillegal.Application/Features/AiEvaluations/Models/AiEvaluationSummaryDto.cs`
+  - `src/Tillegal.Application/Features/AiEvaluations/Models/PagedAiEvaluationsDto.cs`
+  - `src/Tillegal.Application/Features/AiEvaluations/Mappings/AiEvaluationMappingConfig.cs`
+  - `src/Tillegal.Application/Features/AiEvaluations/Commands/CreateEvaluation/`
+  - `src/Tillegal.Application/Features/AiEvaluations/Commands/UpdateEvaluation/`
+  - `src/Tillegal.Application/Features/AiEvaluations/Commands/DeleteEvaluation/`
+  - `src/Tillegal.Application/Features/AiEvaluations/Queries/GetAiEvaluations/`
+  - `src/Tillegal.Application/Features/AiEvaluations/Queries/GetAiEvaluationSummary/`
+  - `src/Tillegal.Application/Features/AiEvaluations/Queries/GetEvaluationById/`
+  - `src/Tillegal.Application/Features/AiEvaluations/Queries/GetEvaluationByMessageId/`
+  - `src/Tillegal.Api/Contracts/AiEvaluations/AiEvaluationContracts.cs`
+  - `src/Tillegal.Api/Mappings/AiEvaluationApiMappingConfig.cs`
+  - `src/Tillegal.Api/Services/CurrentUserService.cs`
+  - `src/Tillegal.Api/Controllers/AiEvaluationsController.cs`
+  - `tests/Tillegal.Application.UnitTests/Domain/AiEvaluationLogTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/AiEvaluations/`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet build src/Tillegal.AppHost/Tillegal.AppHost.csproj`: Succeeded (0 warnings, 0 errors).
+  - `dotnet test tests/Tillegal.Application.UnitTests/Tillegal.Application.UnitTests.csproj`: 213/213 passed.
+  - `dotnet test tests/Tillegal.ArchitectureTests/Tillegal.ArchitectureTests.csproj`: 7/7 passed (strict Clean Architecture boundaries).
+  - `dotnet format tillegal-be.slnx --verify-no-changes`: Passed with 0 formatting discrepancies.
+- **Next action:**
+  - Frontend integration for message evaluation buttons (thumbs up/down, star ratings, and feedback form) and Admin AI performance dashboard.

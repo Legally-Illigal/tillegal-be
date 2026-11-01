@@ -20,5 +20,7 @@ public sealed class CurrentUserService(IHttpContextAccessor httpContextAccessor)
 
     public string? Email => User?.FindFirstValue(ClaimTypes.Email) ?? User?.FindFirstValue("email");
 
+    public string? Role => User?.FindFirstValue(ClaimTypes.Role) ?? User?.FindFirstValue("role");
+
     public bool IsAuthenticated => User?.Identity?.IsAuthenticated is true;
 }
