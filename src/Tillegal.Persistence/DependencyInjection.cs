@@ -28,6 +28,7 @@ public static class DependencyInjection
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IConversationRepository, ConversationRepository>();
         services.AddScoped<IConversationMessageRepository, ConversationMessageRepository>();
+        services.AddScoped<IAiEvaluationRepository, AiEvaluationRepository>();
         services.AddScoped<IAuditLogWriter, DbAuditLogWriter>();
         services.AddScoped<IDevelopmentDataSeed, ComprehensiveDatabaseDataSeed>();
         services.AddScoped<DevelopmentDatabaseSeeder>();
