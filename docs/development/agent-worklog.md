@@ -422,3 +422,150 @@ Use this file as a concise handoff record, not as a transcript. Append an entry 
   - `dotnet format tillegal-be.slnx --verify-no-changes`: Passed with 0 formatting discrepancies.
 - **Next action:**
   - Frontend integration for message evaluation buttons (thumbs up/down, star ratings, and feedback form) and Admin AI performance dashboard.
+
+
+## 2026-11-02 — Implement Admin User CRUD Management
+
+- **Status:** Completed for user management scope (part of BE-F08).
+- **Completed:**
+  - Domain layer: Extended `IUserRepository` with `GetPagedAsync`, `UpdateAsync`, and `DeleteAsync`.
+  - Persistence layer: Implemented `GetPagedAsync` (with search and pagination), `UpdateAsync`, and soft-delete via `DeleteAsync` (setting `DeletedAt`) in `UserRepository`.
+  - Application layer: Implemented CQRS features under `Tillegal.Application.Features.Admin.Users`:
+    - Commands: `CreateUser` (with password hashing and role assignment), `UpdateUser`, `DeleteUser`.
+    - Queries: `GetUsers` (paged list with search term), `GetUserById`.
+    - Validators: FluentValidation validators for all commands and queries.
+    - Models: `UserDto`, `PagedUsersDto`.
+    - Mappings: `AdminUserMappingConfig` for mapping `User` to `UserDto`.
+    - Authorization: Enforced `Admin` role checks at application handler level and controller level.
+  - API layer:
+    - Added `AdminUsersController` under route `/api/admin/users` secured with `[Authorize(Roles = "Admin")]`.
+    - Endpoints:
+      - `POST /api/admin/users` (201 Created)
+      - `GET /api/admin/users` (200 OK)
+      - `GET /api/admin/users/{id:guid}` (200 OK)
+      - `PUT /api/admin/users/{id:guid}` (200 OK)
+      - `DELETE /api/admin/users/{id:guid}` (204 NoContent)
+    - Contracts: `CreateAdminUserApiRequest`, `UpdateAdminUserApiRequest`, `AdminUserApiResponse`, `PagedAdminUsersApiResponse`.
+    - Mapping: `AdminUserApiMappingConfig`.
+  - Tests:
+    - Added unit test classes under `tests/Tillegal.Application.UnitTests/Features/Admin/`:
+      - `CreateUserCommandHandlerTests.cs` (4 tests)
+      - `GetUsersQueryHandlerTests.cs` (3 tests)
+      - `GetUserByIdQueryHandlerTests.cs` (4 tests)
+      - `UpdateUserCommandHandlerTests.cs` (4 tests)
+      - `DeleteUserCommandHandlerTests.cs` (4 tests)
+  - Updated `backend-feature-backlog.md` status for BE-F08 to "Một phần".
+- **Changed paths:**
+  - `src/Tillegal.Domain/Interfaces/Repositories/IUserRepository.cs`
+  - `src/Tillegal.Persistence/Repositories/UserRepository.cs`
+  - `src/Tillegal.Application/Features/Admin/Users/`
+  - `src/Tillegal.Api/Contracts/Admin/AdminUserContracts.cs`
+  - `src/Tillegal.Api/Mappings/AdminUserApiMappingConfig.cs`
+  - `src/Tillegal.Api/Controllers/AdminUsersController.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Admin/`
+  - `docs/development/backend-feature-backlog.md`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet build` (Domain, Application, Persistence, Api, Tests): All succeeded with 0 errors.
+  - `dotnet test tests/Tillegal.Application.UnitTests`: 232/232 passed (including 19 new Admin tests).
+  - `dotnet test tests/Tillegal.ArchitectureTests`: 7/7 passed.
+- **Next action:**
+  - Frontend integration for Admin User Management interface.
+
+## 2026-11-04 — Remove Duplicate Route on Admin UpdateStatus Endpoint
+
+- **Status:** Completed.
+- **Context & Motivation:** Swagger UI displayed two duplicate endpoints (`PUT /api/admin/users/{id}` and `PUT /api/admin/users/{id}/status`) because both route attributes were previously placed on the single `UpdateStatus` action method.
+- **Completed:**
+  - Removed `[HttpPut("{id:guid}")]` from `AdminUsersController`, keeping only `[HttpPut("{id:guid}/status")]` to maintain a single, explicit RESTful contract.
+- **Changed paths:**
+  - `src/Tillegal.Api/Controllers/AdminUsersController.cs`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet build src/Tillegal.Api/Tillegal.Api.csproj`: Succeeded (0 warnings, 0 errors).
+  - `dotnet test tests/Tillegal.Application.UnitTests`: 226/226 passed.
+  - `dotnet format src/Tillegal.Api/Tillegal.Api.csproj --verify-no-changes`: Passed.
+
+## 2026-11-03 — Remove Admin Create User Endpoint for Security Hardening
+
+- **Status:** Completed.
+- **Context & Motivation:** In accordance with security-by-design principles to reduce attack surface and avoid user enumeration/direct privilege injection bypass, the `POST /api/admin/users` endpoint was removed. User creation is strictly restricted to the standard registration + OTP email verification flow.
+- **Completed:**
+  - Removed `[HttpPost] Create` action in `AdminUsersController`.
+  - Removed `CreateAdminUserApiRequest` in `AdminUserContracts.cs` and mapping in `AdminUserApiMappingConfig.cs`.
+  - Deleted `CreateUserCommand`, `CreateUserCommandHandler`, and `CreateUserCommandValidator` from `src/Tillegal.Application/Features/Admin/Users/Commands/CreateUser/`.
+  - Deleted obsolete `CreateUserCommandHandlerTests.cs`.
+- **Changed paths:**
+  - `src/Tillegal.Api/Controllers/AdminUsersController.cs`
+  - `src/Tillegal.Api/Contracts/Admin/AdminUserContracts.cs`
+  - `src/Tillegal.Api/Mappings/AdminUserApiMappingConfig.cs`
+  - `src/Tillegal.Application/Features/Admin/Users/Commands/CreateUser/` (deleted)
+  - `tests/Tillegal.Application.UnitTests/Features/Admin/CreateUserCommandHandlerTests.cs` (deleted)
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet build tillegal-be.slnx`: Succeeded (0 warnings, 0 errors).
+  - `dotnet test tillegal-be.slnx`: 228/228 unit tests passed; 7/7 architecture tests passed.
+  - `dotnet format tillegal-be.slnx --verify-no-changes`: Passed with 0 formatting discrepancies.
+- **Next action:**
+  - Proceed with any further Admin capabilities or frontend integration.
+
+## 2026-11-03 — Restrict Admin User Management: Disallow Deletion and Limit Updates to Account Status
+
+- **Status:** Completed.
+- **Context & Motivation:** Implemented strict admin boundaries as requested:
+  1. Admin is not permitted to delete users or delete themselves (removed DELETE user endpoint).
+  2. Admin is not permitted to modify users' personal details (FullName, PhoneNumber, etc.).
+  3. Admin can only update management status (open / lock account via `IsActive`).
+  4. Admin is strictly prevented from locking/deactivating their own account.
+- **Completed:**
+  - Domain: Added `bool IsActive` property to `User` entity; removed `DeleteAsync` from `IUserRepository`.
+  - Persistence: In `UserRepository`, mapped `IsActive = dataModel.DeletedAt == null`; in `UpdateAsync`, strictly updated `DeletedAt` without mutating personal profile data; added `.IgnoreQueryFilters()` to `GetByIdAsync` and `GetPagedAsync` so admins can view and manage both active and locked users; removed `DeleteAsync`.
+  - Application:
+    - Removed `DeleteUser` and `UpdateUser` commands and their validators/handlers.
+    - Added `UpdateUserStatusCommand`, `UpdateUserStatusCommandValidator`, and `UpdateUserStatusCommandHandler` with self-lockout prevention rule (`currentUserService.UserId == request.Id && !request.IsActive` throws `DomainException`).
+    - Added `bool IsActive` to `UserDto` and updated Mapster config.
+  - API:
+    - Removed `[HttpDelete("{id:guid}")]` action in `AdminUsersController`.
+    - Replaced `Update` action with `[HttpPut("{id:guid}/status")]` (and alias `[HttpPut("{id:guid}")]`) receiving `UpdateUserStatusApiRequest(bool IsActive)`.
+    - Added `bool IsActive` to `AdminUserApiResponse`.
+  - Tests:
+    - Deleted obsolete `DeleteUserCommandHandlerTests` and `UpdateUserCommandHandlerTests`.
+    - Added `UpdateUserStatusCommandHandlerTests` covering unauthorized, forbidden, self-lock rejection, user not found, successful lock, and successful unlock.
+    - Updated `GetUserByIdQueryHandlerTests` and `GetUsersQueryHandlerTests` for `UserDto.IsActive`.
+- **Changed paths:**
+  - `src/Tillegal.Domain/Entities/User.cs`
+  - `src/Tillegal.Domain/Interfaces/Repositories/IUserRepository.cs`
+  - `src/Tillegal.Persistence/Repositories/UserRepository.cs`
+  - `src/Tillegal.Application/Features/Admin/Users/Models/UserDto.cs`
+  - `src/Tillegal.Application/Features/Admin/Users/Mappings/AdminUserMappingConfig.cs`
+  - `src/Tillegal.Application/Features/Admin/Users/Commands/DeleteUser/` (deleted)
+  - `src/Tillegal.Application/Features/Admin/Users/Commands/UpdateUser/` (deleted)
+  - `src/Tillegal.Application/Features/Admin/Users/Commands/UpdateUserStatus/`
+  - `src/Tillegal.Api/Contracts/Admin/AdminUserContracts.cs`
+  - `src/Tillegal.Api/Controllers/AdminUsersController.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Admin/DeleteUserCommandHandlerTests.cs` (deleted)
+  - `tests/Tillegal.Application.UnitTests/Features/Admin/UpdateUserCommandHandlerTests.cs` (deleted)
+  - `tests/Tillegal.Application.UnitTests/Features/Admin/UpdateUserStatusCommandHandlerTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Admin/GetUserByIdQueryHandlerTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Admin/GetUsersQueryHandlerTests.cs`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet test tests/Tillegal.Application.UnitTests/Tillegal.Application.UnitTests.csproj`: 226/226 passed.
+  - `dotnet test tests/Tillegal.ArchitectureTests/Tillegal.ArchitectureTests.csproj`: 7/7 passed.
+  - `dotnet format tillegal-be.slnx --verify-no-changes`: Passed with 0 formatting discrepancies.
+- **Next action:**
+  - Frontend integration for Admin User Management interface.
+
+## 2026-11-04 — Remove Duplicate Route on Admin UpdateStatus Endpoint
+
+- **Status:** Completed.
+- **Context & Motivation:** Swagger UI displayed two duplicate endpoints (`PUT /api/admin/users/{id}` and `PUT /api/admin/users/{id}/status`) because both route attributes were previously placed on the single `UpdateStatus` action method.
+- **Completed:**
+  - Removed `[HttpPut("{id:guid}")]` from `AdminUsersController`, keeping only `[HttpPut("{id:guid}/status")]` to maintain a single, explicit RESTful contract.
+- **Changed paths:**
+  - `src/Tillegal.Api/Controllers/AdminUsersController.cs`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet build src/Tillegal.Api/Tillegal.Api.csproj`: Succeeded (0 warnings, 0 errors).
+  - `dotnet test tests/Tillegal.Application.UnitTests`: 226/226 passed.
+  - `dotnet format src/Tillegal.Api/Tillegal.Api.csproj --verify-no-changes`: Passed.

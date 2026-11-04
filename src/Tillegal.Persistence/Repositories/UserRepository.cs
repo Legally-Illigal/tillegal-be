@@ -12,6 +12,7 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
     {
         var dataModel = await dbContext.Users
             .AsNoTracking()
+            .IgnoreQueryFilters()
             .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
 
@@ -74,10 +75,57 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
             GoogleSubject = user.GoogleSubject,
             PasswordHash = user.PasswordHash,
             PhoneNumber = user.PhoneNumber,
-            CreatedAt = user.CreatedAt
+            CreatedAt = user.CreatedAt,
+            DeletedAt = user.IsActive ? null : DateTimeOffset.UtcNow
         };
 
         await dbContext.Users.AddAsync(dataModel, cancellationToken);
+    }
+
+    public async Task<(IReadOnlyList<User> Items, int TotalCount)> GetPagedAsync(
+        int skip,
+        int pageSize,
+        string? searchTerm,
+        CancellationToken cancellationToken = default)
+    {
+        var query = dbContext.Users
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .Include(u => u.Role)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var normalized = searchTerm.Trim().ToLowerInvariant();
+            query = query.Where(u =>
+                (u.FullName != null && u.FullName.ToLower().Contains(normalized)) ||
+                (u.Email != null && u.Email.ToLower().Contains(normalized)));
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var dataModels = await query
+            .OrderBy(u => u.CreatedAt)
+            .Skip(skip)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        var items = dataModels.Select(MapToEntity).ToList();
+        return (items, totalCount);
+    }
+
+    public async Task UpdateAsync(User user, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+
+        var dataModel = await dbContext.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Id == user.Id, cancellationToken);
+
+        if (dataModel is null)
+            return;
+
+        dataModel.DeletedAt = user.IsActive ? null : DateTimeOffset.UtcNow;
     }
 
     private static User MapToEntity(UserDataModel dataModel)
@@ -92,7 +140,8 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
             PasswordHash = dataModel.PasswordHash,
             PhoneNumber = dataModel.PhoneNumber,
             CreatedAt = dataModel.CreatedAt,
-            Role = dataModel.Role != null ? new Role(dataModel.Role.Id, dataModel.Role.Name) : null
+            Role = dataModel.Role != null ? new Role(dataModel.Role.Id, dataModel.Role.Name) : null,
+            IsActive = dataModel.DeletedAt == null
         };
     }
 }
