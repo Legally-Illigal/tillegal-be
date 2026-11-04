@@ -21,4 +21,6 @@ public sealed class User
     public string? PhoneNumber { get; set; }
 
     public Role? Role { get; set; }
+
+    public bool IsActive { get; set; } = true;
 }

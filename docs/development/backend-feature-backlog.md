@@ -26,7 +26,7 @@ Do not split these feature entries into child implementation tasks unless the us
 | BE-F05 | Tiếp nhận và xử lý yêu cầu pháp lý | Cung cấp API tiếp nhận yêu cầu từ Frontend và điều phối yêu cầu đến AI Service. | Chưa đánh giá |
 | BE-F06 | Tích hợp AI Service | Giao tiếp với AI Service để thực hiện các chức năng hỏi đáp, tư vấn pháp lý và kiểm chứng trích dẫn. | Chưa đánh giá |
 | BE-F07 | Quản lý trạng thái và kết quả xử lý | Tiếp nhận, xử lý và trả kết quả từ AI Service theo hợp đồng API; xử lý lỗi hoặc kết quả không hợp lệ. | Chưa đánh giá |
-| BE-F08 | Chức năng quản trị | Cung cấp API quản trị tài khoản và thông tin trạng thái vận hành cần thiết cho quản trị viên. | Chưa đánh giá |
+| BE-F08 | Chức năng quản trị | Cung cấp API quản trị tài khoản và thông tin trạng thái vận hành cần thiết cho quản trị viên. | Một phần |
 | BE-F09 | Kiểm soát bảo mật và nhật ký | Kiểm soát truy cập dữ liệu, bảo vệ thông tin nhạy cảm và ghi nhận các sự kiện cần thiết phục vụ kiểm tra. | Chưa đánh giá |
 
 ## Backend / AI Service responsibility boundary
