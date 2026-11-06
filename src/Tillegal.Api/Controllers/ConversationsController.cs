@@ -3,8 +3,13 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Tillegal.Api.Contracts.AiEvaluations;
 using Tillegal.Api.Contracts.Conversations;
 using Tillegal.Api.Contracts.Messages;
+using Tillegal.Application.Features.AiEvaluations.Commands.CreateMessageEvaluation;
+using Tillegal.Application.Features.AiEvaluations.Commands.DeleteMessageEvaluation;
+using Tillegal.Application.Features.AiEvaluations.Commands.UpdateMessageEvaluation;
+using Tillegal.Application.Features.AiEvaluations.Queries.GetMessageEvaluation;
 using Tillegal.Application.Features.Conversations.Commands.CreateConversation;
 using Tillegal.Application.Features.Conversations.Commands.DeleteConversation;
 using Tillegal.Application.Features.Conversations.Commands.UpdateConversation;
@@ -197,6 +202,93 @@ public sealed class ConversationsController(ISender mediator, IMapper mapper)
         CancellationToken cancellationToken)
     {
         var command = new DeleteMessageCommand(conversationId, messageId);
+        await Mediator.Send(command, cancellationToken);
+
+        return NoContent();
+    }
+
+    [HttpPost("{conversationId:guid}/messages/{messageId:guid}/evaluation")]
+    [ProducesResponseType(typeof(AiEvaluationApiResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CreateMessageEvaluation(
+        [FromRoute] Guid conversationId,
+        [FromRoute] Guid messageId,
+        [FromBody] CreateAiEvaluationApiRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = new CreateMessageEvaluationCommand(
+            conversationId,
+            messageId,
+            request.IsHelpful,
+            request.Rating,
+            request.FeedbackComment);
+
+        var result = await Mediator.Send(command, cancellationToken);
+        var response = Mapper.Map<AiEvaluationApiResponse>(result);
+
+        return CreatedAtAction(
+            nameof(GetMessageEvaluation),
+            new { conversationId, messageId },
+            response);
+    }
+
+    [HttpGet("{conversationId:guid}/messages/{messageId:guid}/evaluation")]
+    [ProducesResponseType(typeof(AiEvaluationApiResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetMessageEvaluation(
+        [FromRoute] Guid conversationId,
+        [FromRoute] Guid messageId,
+        CancellationToken cancellationToken)
+    {
+        var query = new GetMessageEvaluationQuery(conversationId, messageId);
+        var result = await Mediator.Send(query, cancellationToken);
+        var response = Mapper.Map<AiEvaluationApiResponse>(result);
+
+        return Ok(response);
+    }
+
+    [HttpPut("{conversationId:guid}/messages/{messageId:guid}/evaluation")]
+    [ProducesResponseType(typeof(AiEvaluationApiResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateMessageEvaluation(
+        [FromRoute] Guid conversationId,
+        [FromRoute] Guid messageId,
+        [FromBody] UpdateAiEvaluationApiRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = new UpdateMessageEvaluationCommand(
+            conversationId,
+            messageId,
+            request.IsHelpful,
+            request.Rating,
+            request.FeedbackComment);
+
+        var result = await Mediator.Send(command, cancellationToken);
+        var response = Mapper.Map<AiEvaluationApiResponse>(result);
+
+        return Ok(response);
+    }
+
+    [HttpDelete("{conversationId:guid}/messages/{messageId:guid}/evaluation")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteMessageEvaluation(
+        [FromRoute] Guid conversationId,
+        [FromRoute] Guid messageId,
+        CancellationToken cancellationToken)
+    {
+        var command = new DeleteMessageEvaluationCommand(conversationId, messageId);
         await Mediator.Send(command, cancellationToken);
 
         return NoContent();

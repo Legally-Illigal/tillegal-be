@@ -21,6 +21,12 @@ public sealed class UpdateMessageCommandHandler(
         var userId = currentUserService.UserId
             ?? throw new UnauthorizedException("User is not authenticated.");
 
+        var isAdmin = string.Equals(currentUserService.Role, "Admin", StringComparison.OrdinalIgnoreCase);
+        if (isAdmin)
+        {
+            throw new ForbiddenAccessException("Admin is not allowed to update messages.");
+        }
+
         var conversation = await conversationService.GetConversationByIdAsync(
             request.ConversationId,
             cancellationToken);

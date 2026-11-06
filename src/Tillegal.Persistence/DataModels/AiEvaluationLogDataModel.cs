@@ -17,3 +17,4 @@ public sealed class AiEvaluationLogDataModel : BaseDataModel
 
     public UserDataModel? EvaluatorUser { get; set; }
 }
+

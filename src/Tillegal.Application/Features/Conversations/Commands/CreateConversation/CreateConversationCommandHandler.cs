@@ -20,6 +20,12 @@ public sealed class CreateConversationCommandHandler(
         var userId = currentUserService.UserId
             ?? throw new UnauthorizedException("User is not authenticated.");
 
+        var isAdmin = string.Equals(currentUserService.Role, "Admin", StringComparison.OrdinalIgnoreCase);
+        if (isAdmin)
+        {
+            throw new ForbiddenAccessException("Admin is not allowed to create conversations or participate in chat.");
+        }
+
         var title = string.IsNullOrWhiteSpace(request.Title)
             ? "Cuộc hội thoại mới"
             : request.Title.Trim();

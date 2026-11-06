@@ -569,3 +569,278 @@ Use this file as a concise handoff record, not as a transcript. Append an entry 
   - `dotnet build src/Tillegal.Api/Tillegal.Api.csproj`: Succeeded (0 warnings, 0 errors).
   - `dotnet test tests/Tillegal.Application.UnitTests`: 226/226 passed.
   - `dotnet format src/Tillegal.Api/Tillegal.Api.csproj --verify-no-changes`: Passed.
+
+
+## 2026-11-04 — Refactor AI Evaluation to Conversation Branch and Restrict Admin Permissions
+
+- **Status:** Completed.
+- **Context & Motivation:**
+  - Security enhancement: Eliminated message-level evaluation (`POST /api/ai-evaluations` requiring `messageId`) to prevent exposing internal message IDs.
+  - Architectural alignment: Associated evaluations with conversations (`ConversationId`) as a sub-resource branch (`/api/conversations/{conversationId}/evaluations`), allowing multiple evaluations per conversation.
+  - Role-based access control: Admin is restricted to view-only management rights (cannot chat, create conversations, post messages, create evaluations, or modify/delete user evaluations). Users can view only their own evaluations, whereas Admin can view all evaluations classified by evaluator role (Lawyer/User) with filtering and aggregated summary metrics.
+- **Completed:**
+  - **Domain:**
+    - Modified `AiEvaluationLog` entity: replaced `MessageId` with `ConversationId`, added `EvaluatorRole` property, updated factory `Create` and constructors.
+    - Updated `IAiEvaluationRepository` and `IAiEvaluationService`: replaced message queries with `GetByConversationIdAsync`, added `evaluatorRole` filtering to paged queries/counts, and enriched summary tuple with lawyer and user counts.
+    - Updated `AiEvaluationService` implementation.
+  - **Persistence:**
+    - Replaced `MessageId` and message navigation in `AiEvaluationLogDataModel` with `ConversationId` and `Conversation` navigation; configured foreign key to `Conversations` table with cascade delete and indexing.
+    - Added `AiEvaluationLogs` collection navigation to `ConversationDataModel` and removed it from `ConversationMessageDataModel`.
+    - In `AiEvaluationRepository`: included `EvaluatorUser.Role` for evaluator role resolution ("Lawyer" / "User"); added `evaluatorRole` query filter; added `LawyerEvaluationsCount` and `UserEvaluationsCount` to `GetSummaryAsync`.
+    - Updated seed generator in `ComprehensiveDatabaseDataSeed.cs` to link evaluations to `ConversationId`.
+  - **Application:**
+    - Refactored `AiEvaluationDto` and `AiEvaluationSummaryDto` to carry `ConversationId`, `EvaluatorRole`, and role metrics.
+    - Updated `CreateEvaluationCommand` and validator to reference `ConversationId`; handler enforces that Admin cannot create evaluations, verifies conversation ownership, and permits multiple evaluations per conversation.
+    - Enforced that Admin cannot edit or delete user evaluations in `UpdateEvaluationCommandHandler` and `DeleteEvaluationCommandHandler`.
+    - Enforced that Admin cannot chat (creating conversations, posting messages, updating messages, deleting messages in `CreateConversationCommandHandler`, `CreateMessageCommandHandler`, `UpdateMessageCommandHandler`, `DeleteMessageCommandHandler`).
+    - Added `GetEvaluationsByConversationIdQuery` (validator & handler) replacing obsolete `GetEvaluationByMessageId`.
+    - Updated `GetAiEvaluationsQueryHandler` so non-admin users only view their own evaluations while Admins can view all with role-based filtering.
+  - **API:**
+    - Removed `POST /api/ai-evaluations` and `GET /api/ai-evaluations/message/{messageId}` from `AiEvaluationsController`.
+    - Added `POST /api/conversations/{conversationId}/evaluations` and `GET /api/conversations/{conversationId}/evaluations` to `ConversationsController`.
+    - Added `evaluatorRole` query parameter to `GET /api/ai-evaluations`.
+    - Updated contracts `CreateAiEvaluationApiRequest`, `AiEvaluationApiResponse`, `AiEvaluationSummaryApiResponse`.
+  - **Tests:**
+    - Updated domain tests (`AiEvaluationLogTests.cs`), validator tests (`AiEvaluationCommandValidatorTests.cs`), mapping tests (`AiEvaluationMappingTests.cs`), and query/command handler test suites.
+    - Added test cases verifying Admin chat and evaluation restrictions.
+- **Changed paths:**
+  - `src/Tillegal.Domain/Entities/AiEvaluationLog.cs`
+  - `src/Tillegal.Domain/Interfaces/Repositories/IAiEvaluationRepository.cs`
+  - `src/Tillegal.Domain/Interfaces/Services/IAiEvaluationService.cs`
+  - `src/Tillegal.Domain/Services/AiEvaluationService.cs`
+  - `src/Tillegal.Persistence/DataModels/AiEvaluationLogDataModel.cs`
+  - `src/Tillegal.Persistence/DataModels/ConversationDataModel.cs`
+  - `src/Tillegal.Persistence/DataModels/ConversationMessageDataModel.cs`
+  - `src/Tillegal.Persistence/Configurations/AiEvaluationLogConfiguration.cs`
+  - `src/Tillegal.Persistence/Repositories/AiEvaluationRepository.cs`
+  - `src/Tillegal.Persistence/SeedData/ComprehensiveDatabaseDataSeed.cs`
+  - `src/Tillegal.Application/Features/AiEvaluations/Models/AiEvaluationDto.cs`
+  - `src/Tillegal.Application/Features/AiEvaluations/Models/AiEvaluationSummaryDto.cs`
+  - `src/Tillegal.Application/Features/AiEvaluations/Commands/CreateEvaluation/`
+  - `src/Tillegal.Application/Features/AiEvaluations/Commands/UpdateEvaluation/`
+  - `src/Tillegal.Application/Features/AiEvaluations/Commands/DeleteEvaluation/`
+  - `src/Tillegal.Application/Features/AiEvaluations/Queries/GetAiEvaluations/`
+  - `src/Tillegal.Application/Features/AiEvaluations/Queries/GetAiEvaluationSummary/`
+  - `src/Tillegal.Application/Features/AiEvaluations/Queries/GetEvaluationsByConversationId/`
+  - `src/Tillegal.Application/Features/Conversations/Commands/CreateConversation/`
+  - `src/Tillegal.Application/Features/Conversations/Commands/UpdateConversation/`
+  - `src/Tillegal.Application/Features/Conversations/Commands/DeleteConversation/`
+  - `src/Tillegal.Application/Features/Messages/Commands/CreateMessage/`
+  - `src/Tillegal.Application/Features/Messages/Commands/UpdateMessage/`
+  - `src/Tillegal.Application/Features/Messages/Commands/DeleteMessage/`
+  - `src/Tillegal.Api/Contracts/AiEvaluations/AiEvaluationContracts.cs`
+  - `src/Tillegal.Api/Mappings/AiEvaluationApiMappingConfig.cs`
+  - `src/Tillegal.Api/Controllers/AiEvaluationsController.cs`
+  - `src/Tillegal.Api/Controllers/ConversationsController.cs`
+  - `tests/Tillegal.Application.UnitTests/Domain/AiEvaluationLogTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/AiEvaluations/`
+  - `tests/Tillegal.Application.UnitTests/Features/Conversations/`
+  - `tests/Tillegal.Application.UnitTests/Features/Messages/`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet build src/Tillegal.Api/Tillegal.Api.csproj`: Succeeded (0 warnings, 0 errors).
+  - `dotnet build src/Tillegal.Persistence/Tillegal.Persistence.csproj`: Succeeded (0 warnings, 0 errors).
+  - `dotnet test tests/Tillegal.Application.UnitTests/Tillegal.Application.UnitTests.csproj`: 233/233 passed.
+  - `dotnet test tests/Tillegal.ArchitectureTests/Tillegal.ArchitectureTests.csproj`: 7/7 passed.
+  - `dotnet format tillegal-be.slnx --verify-no-changes`: Passed with 0 discrepancies.
+- **Next action:**
+  - Update frontend chat interface to call `POST /api/conversations/{conversationId}/evaluations` and display evaluations by conversation.
+
+## 2026-11-04 — Generate EF Core Migration for AiEvaluationLog Conversation Association
+
+- **Context / Problem:**
+  - Running `Tillegal.AppHost` threw `Microsoft.EntityFrameworkCore.Migrations.PendingModelChangesWarning` during `dbContext.Database.MigrateAsync()` because `AiEvaluationLog` was refactored to relate to `Conversations` instead of `ConversationMessages`, but no migration had been generated.
+- **Completed:**
+  - Generated EF Core migration `20261104161031_ChangeAiEvaluationToConversation` which drops `FK_AiEvaluationLogs_ConversationMessages_MessageId`, renames `MessageId` to `ConversationId`, renames index `IX_AiEvaluationLogs_MessageId` to `IX_AiEvaluationLogs_ConversationId`, and adds `FK_AiEvaluationLogs_Conversations_ConversationId` referencing `Conversations(Id)`.
+  - Added data backfill SQL in migration `Up` to update `ConversationId` values from `ConversationMessages.ConversationId` and cleanup orphaned records before applying the new FK constraint (preventing foreign key violation error `23503`).
+  - Executed migration successfully against database via `dotnet ef database update`.
+- **Changed paths:**
+  - `src/Tillegal.Persistence/Migrations/20261104161031_ChangeAiEvaluationToConversation.cs`
+  - `src/Tillegal.Persistence/Migrations/20261104161031_ChangeAiEvaluationToConversation.Designer.cs`
+  - `src/Tillegal.Persistence/Migrations/AppDbContextModelSnapshot.cs`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet build --no-restore`: Succeeded (0 warnings, 0 errors).
+  - `dotnet test --no-restore`: All 233 unit tests and 7 architecture tests passed.
+  - `dotnet ef database update`: Succeeded and recorded in `__EFMigrationsHistory`.
+- **Next action:**
+  - Run `Tillegal.AppHost` without database migration errors.
+
+## 2026-11-05 — Remove Legacy AI Evaluation Feature for Clean Redesign
+
+- **Status:** Completed.
+- **Context & Motivation:**
+  - The previous AI evaluation implementation was reported as incorrect / needing a complete reimplementation.
+  - Requested action: Completely remove all components and references of the old AI evaluation implementation across API, Application, Domain, Persistence, Seed, and Tests layers so the feature can be re-architected and coded cleanly.
+- **Completed:**
+  - **API:**
+    - Removed `AiEvaluationsController.cs`, `AiEvaluationContracts.cs`, and `AiEvaluationApiMappingConfig.cs`.
+    - Removed AI evaluation endpoints (`POST /api/conversations/{conversationId}/evaluations` and `GET /api/conversations/{conversationId}/evaluations`) and related using directives from `ConversationsController.cs`.
+  - **Application:**
+    - Removed entire `Features/AiEvaluations` folder including commands (`CreateEvaluation`, `UpdateEvaluation`, `DeleteEvaluation`), queries (`GetAiEvaluations`, `GetAiEvaluationSummary`, `GetEvaluationById`, `GetEvaluationByMessageId`), DTOs, and mappings.
+    - Removed `IAiEvaluationService` registration from `DependencyInjection.cs`.
+  - **Domain:**
+    - Removed `AiEvaluationLog.cs` entity, `IAiEvaluationRepository.cs`, `IAiEvaluationService.cs`, and `AiEvaluationService.cs`.
+  - **Persistence:**
+    - Removed `AiEvaluationLogDataModel.cs`, `AiEvaluationLogConfiguration.cs`, and `AiEvaluationRepository.cs`.
+    - Removed `DbSet<AiEvaluationLogDataModel> AiEvaluationLogs` from `AppDbContext.cs`.
+    - Removed `AiEvaluationLogs` navigation collection from `ConversationDataModel.cs`, `ConversationMessageDataModel.cs`, and `UserDataModel.cs`.
+    - Removed `IAiEvaluationRepository` registration from `DependencyInjection.cs`.
+    - Removed `SeedAiEvaluationLogsAsync` and evaluation audit logs from `ComprehensiveDatabaseDataSeed.cs`.
+    - Cleaned up untracked temporary migration files `20261104161031_ChangeAiEvaluationToConversation.*` and restored `AppDbContextModelSnapshot.cs` to HEAD.
+  - **Tests:**
+    - Removed `AiEvaluationLogTests.cs` domain tests and entire `tests/Tillegal.Application.UnitTests/Features/AiEvaluations/` test folder.
+- **Changed paths:**
+  - `src/Tillegal.Api/Contracts/AiEvaluations/` (deleted)
+  - `src/Tillegal.Api/Controllers/AiEvaluationsController.cs` (deleted)
+  - `src/Tillegal.Api/Controllers/ConversationsController.cs`
+  - `src/Tillegal.Api/Mappings/AiEvaluationApiMappingConfig.cs` (deleted)
+  - `src/Tillegal.Application/DependencyInjection.cs`
+  - `src/Tillegal.Application/Features/AiEvaluations/` (deleted)
+  - `src/Tillegal.Domain/Entities/AiEvaluationLog.cs` (deleted)
+  - `src/Tillegal.Domain/Interfaces/Repositories/IAiEvaluationRepository.cs` (deleted)
+  - `src/Tillegal.Domain/Interfaces/Services/IAiEvaluationService.cs` (deleted)
+  - `src/Tillegal.Domain/Services/AiEvaluationService.cs` (deleted)
+  - `src/Tillegal.Persistence/Configurations/AiEvaluationLogConfiguration.cs` (deleted)
+  - `src/Tillegal.Persistence/Context/AppDbContext.cs`
+  - `src/Tillegal.Persistence/DataModels/AiEvaluationLogDataModel.cs` (deleted)
+  - `src/Tillegal.Persistence/DataModels/ConversationDataModel.cs`
+  - `src/Tillegal.Persistence/DataModels/ConversationMessageDataModel.cs`
+  - `src/Tillegal.Persistence/DataModels/UserDataModel.cs`
+  - `src/Tillegal.Persistence/DependencyInjection.cs`
+  - `src/Tillegal.Persistence/Repositories/AiEvaluationRepository.cs` (deleted)
+  - `src/Tillegal.Persistence/SeedData/ComprehensiveDatabaseDataSeed.cs`
+  - `tests/Tillegal.Application.UnitTests/Domain/AiEvaluationLogTests.cs` (deleted)
+  - `tests/Tillegal.Application.UnitTests/Features/AiEvaluations/` (deleted)
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet build src/Tillegal.Domain/Tillegal.Domain.csproj`: Succeeded (0 warnings, 0 errors).
+  - `dotnet build src/Tillegal.Application/Tillegal.Application.csproj`: Succeeded (0 errors).
+  - `dotnet build src/Tillegal.Infrastructure/Tillegal.Infrastructure.csproj`: Succeeded (0 errors).
+  - `dotnet build src/Tillegal.Persistence/Tillegal.Persistence.csproj`: Succeeded (0 errors).
+  - `dotnet build src/Tillegal.Api/Tillegal.Api.csproj`: Succeeded (0 errors).
+  - `dotnet test tests/Tillegal.Application.UnitTests/Tillegal.Application.UnitTests.csproj`: 176/176 passed.
+  - `dotnet test tests/Tillegal.ArchitectureTests/Tillegal.ArchitectureTests.csproj`: 7/7 passed.
+- **Next action:**
+  - Ready for new requirements and re-implementation of AI evaluation.
+
+## 2026-11-06 — Implement 2-Tier AI Evaluation Feature (Message Branch for Users & Dedicated Admin Reporting)
+
+- **Status:** Completed.
+- **Context & Motivation:**
+  - Implemented the redesigned AI evaluation system according to updated requirements:
+    1. **Tier 1 (User / Lawyer):** Evaluation is a sub-resource branch of messages (`/api/conversations/{conversationId}/messages/{messageId}/evaluation`), evaluating individual assistant messages (`role = 'assistant'`). Supports POST (create), GET (view own evaluation), PUT (update), and DELETE (soft delete). Users can only view and manage evaluations for their own conversations. Admin is strictly forbidden from evaluating or chatting.
+    2. **Tier 2 (Admin):** Dedicated administrative management and summary reporting under `/api/admin/ai-evaluations`. Admin can view all evaluations (with pagination and filtering by helpfulness, rating, evaluator, and evaluator role) and view aggregated statistical summary metrics. Admin has view-only rights (no PUT/DELETE/POST).
+- **Completed:**
+  - **Domain:**
+    - Created entity `AiEvaluationLog` linked to `MessageId` with validations (1 <= Rating <= 5, requires at least one evaluation attribute) and soft delete.
+    - Defined `AiEvaluationSummary` model.
+    - Defined `IAiEvaluationRepository` and `IAiEvaluationService` contracts.
+    - Implemented `AiEvaluationService`.
+  - **Persistence:**
+    - Created `AiEvaluationLogDataModel` and configuration `AiEvaluationLogConfiguration`.
+    - Restored `DbSet<AiEvaluationLogDataModel> AiEvaluationLogs` in `AppDbContext` and navigation properties on `ConversationMessageDataModel` and `UserDataModel`.
+    - Implemented `AiEvaluationRepository` with message-level retrieval, admin paged querying with role resolution (Lawyer/User), and summary calculation with rating distribution.
+    - Registered `IAiEvaluationRepository` in `DependencyInjection.cs`.
+    - Added evaluation seeding for assistant messages in `ComprehensiveDatabaseDataSeed.cs`.
+  - **Application:**
+    - Models: `AiEvaluationDto`, `AiEvaluationSummaryDto`, `PagedAiEvaluationsDto`, and Mapster mapping `AiEvaluationMappingConfig`.
+    - Commands:
+      - `CreateMessageEvaluationCommand`: Enforces non-admin, conversation ownership, message exists in conversation, message is assistant, unique evaluation check, and persists evaluator role.
+      - `UpdateMessageEvaluationCommand`: Enforces non-admin, conversation and evaluation ownership, validates input, and updates attributes.
+      - `DeleteMessageEvaluationCommand`: Enforces non-admin, conversation and evaluation ownership, and marks evaluation as soft deleted.
+    - Queries:
+      - `GetMessageEvaluationQuery`: Returns evaluation for conversation owner only; blocks Admin and non-owners.
+      - `GetAdminAiEvaluationsQuery`: Restricted to Admin; returns paged evaluations with filters.
+      - `GetAdminAiEvaluationSummaryQuery`: Restricted to Admin; returns aggregated metrics and distribution.
+    - Registered `IAiEvaluationService` in `DependencyInjection.cs`.
+  - **API:**
+    - Contracts: `CreateAiEvaluationApiRequest`, `UpdateAiEvaluationApiRequest`, `AiEvaluationApiResponse`, `AiEvaluationSummaryApiResponse`, `PagedAiEvaluationsApiResponse`.
+    - Mappings: `AiEvaluationApiMappingConfig`.
+    - `ConversationsController`: Added message evaluation endpoints (`POST`, `GET`, `PUT`, `DELETE` at `{conversationId}/messages/{messageId}/evaluation`).
+    - `AdminAiEvaluationsController`: Added view-only endpoints (`GET /api/admin/ai-evaluations`, `GET /api/admin/ai-evaluations/summary`) protected with `[Authorize(Roles = "Admin")]`.
+  - **Tests:**
+    - Added domain unit tests (`AiEvaluationLogTests.cs`).
+    - Added command handler tests (`CreateMessageEvaluationCommandHandlerTests.cs`, `UpdateMessageEvaluationCommandHandlerTests.cs`, `DeleteMessageEvaluationCommandHandlerTests.cs`).
+    - Added query handler tests (`GetMessageEvaluationQueryHandlerTests.cs`, `GetAdminAiEvaluationsQueryHandlerTests.cs`, `GetAdminAiEvaluationSummaryQueryHandlerTests.cs`).
+    - Added validator tests (`MessageEvaluationCommandValidatorTests.cs`).
+    - Added mapping tests (`AiEvaluationMappingTests.cs`).
+- **Changed paths:**
+  - `src/Tillegal.Domain/Entities/AiEvaluationLog.cs`
+  - `src/Tillegal.Domain/Models/AiEvaluationSummary.cs`
+  - `src/Tillegal.Domain/Interfaces/Repositories/IAiEvaluationRepository.cs`
+  - `src/Tillegal.Domain/Interfaces/Services/IAiEvaluationService.cs`
+  - `src/Tillegal.Domain/Services/AiEvaluationService.cs`
+  - `src/Tillegal.Persistence/DataModels/AiEvaluationLogDataModel.cs`
+  - `src/Tillegal.Persistence/Configurations/AiEvaluationLogConfiguration.cs`
+  - `src/Tillegal.Persistence/Context/AppDbContext.cs`
+  - `src/Tillegal.Persistence/DataModels/ConversationMessageDataModel.cs`
+  - `src/Tillegal.Persistence/DataModels/UserDataModel.cs`
+  - `src/Tillegal.Persistence/Repositories/AiEvaluationRepository.cs`
+  - `src/Tillegal.Persistence/DependencyInjection.cs`
+  - `src/Tillegal.Persistence/SeedData/ComprehensiveDatabaseDataSeed.cs`
+  - `src/Tillegal.Application/Features/AiEvaluations/`
+  - `src/Tillegal.Application/DependencyInjection.cs`
+  - `src/Tillegal.Api/Contracts/AiEvaluations/AiEvaluationContracts.cs`
+  - `src/Tillegal.Api/Mappings/AiEvaluationApiMappingConfig.cs`
+  - `src/Tillegal.Api/Controllers/ConversationsController.cs`
+  - `src/Tillegal.Api/Controllers/AdminAiEvaluationsController.cs`
+  - `tests/Tillegal.Application.UnitTests/Domain/AiEvaluationLogTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/AiEvaluations/`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet build src/Tillegal.Domain/Tillegal.Domain.csproj`: Succeeded (0 warnings, 0 errors).
+  - `dotnet build src/Tillegal.Application/Tillegal.Application.csproj`: Succeeded (0 errors).
+  - `dotnet build src/Tillegal.Persistence/Tillegal.Persistence.csproj`: Succeeded (0 errors).
+  - `dotnet build src/Tillegal.Api/Tillegal.Api.csproj`: Succeeded (0 errors).
+  - `dotnet test tests/Tillegal.Application.UnitTests/Tillegal.Application.UnitTests.csproj`: 212/212 passed.
+  - `dotnet test tests/Tillegal.ArchitectureTests/Tillegal.ArchitectureTests.csproj`: 7/7 passed.
+  - `dotnet format tillegal-be.slnx --no-restore --verify-no-changes`: Passed (0 formatting errors).
+- **Next action:**
+  - None required. Feature implementation is complete and verified.
+
+## 2026-11-06 — Apply EF Core Migration to Restore MessageId Column in PostgreSQL
+
+- **Context / Problem:**
+  - Running `dotnet run` / `Tillegal.AppHost` threw PostgreSQL error `column "MessageId" of relation "AiEvaluationLogs" does not exist`.
+  - Cause: In a previous uncommitted change on 2026-11-04, migration `20261104161031_ChangeAiEvaluationToConversation` had been executed on the local PostgreSQL database, which renamed `MessageId` to `ConversationId` and recorded that migration in `__EFMigrationsHistory`. When that migration file was deleted, EF Core did not run any step to revert the column back to `MessageId`.
+- **Completed:**
+  - Restored `20261104161031_ChangeAiEvaluationToConversation` migration to preserve migration history continuity.
+  - Added new migration `20261106110000_RevertAiEvaluationToMessage` that safely checks if `ConversationId` exists, drops the old conversation FK, renames `ConversationId` to `MessageId`, re-links evaluations to assistant messages, and adds foreign key `FK_AiEvaluationLogs_ConversationMessages_MessageId`.
+  - Executed `dotnet ef database update --project src/Tillegal.Persistence/Tillegal.Persistence.csproj --startup-project src/Tillegal.AppHost/Tillegal.AppHost.csproj` which successfully applied the migration and updated `__EFMigrationsHistory`.
+- **Changed paths:**
+  - `src/Tillegal.Persistence/Migrations/20261104161031_ChangeAiEvaluationToConversation.cs`
+  - `src/Tillegal.Persistence/Migrations/20261104161031_ChangeAiEvaluationToConversation.Designer.cs`
+  - `src/Tillegal.Persistence/Migrations/20261106110000_RevertAiEvaluationToMessage.cs`
+  - `src/Tillegal.Persistence/Migrations/20261106110000_RevertAiEvaluationToMessage.Designer.cs`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet ef database update`: Applied `20261106110000_RevertAiEvaluationToMessage` successfully.
+  - `dotnet test tests/Tillegal.Application.UnitTests/Tillegal.Application.UnitTests.csproj`: 212/212 passed.
+  - `dotnet test tests/Tillegal.ArchitectureTests/Tillegal.ArchitectureTests.csproj`: 7/7 passed.
+- **Next action:**
+  - Run `Tillegal.AppHost` cleanly without database schema errors.
+
+## 2026-11-06 — Implement Admin Get AI Evaluation by ID
+
+- **Status:** Completed and verified.
+- **Completed:**
+  - Implemented `GetAdminAiEvaluationByIdQuery`, `GetAdminAiEvaluationByIdQueryValidator`, and `GetAdminAiEvaluationByIdQueryHandler` in Application layer.
+  - Restricted query to authenticated users with `Admin` role; throws `ForbiddenAccessException` if non-admin or unauthenticated.
+  - Calls `IAiEvaluationService.GetEvaluationByIdAsync(id)`, throwing `NotFoundException` if not found, and maps to `AiEvaluationDto`.
+  - Added `[HttpGet("{id:guid}")]` endpoint to `AdminAiEvaluationsController` returning `AiEvaluationApiResponse` (HTTP 200, 401, 403, 404).
+  - Added unit tests in `GetAdminAiEvaluationByIdQueryHandlerTests.cs` and validation tests in `MessageEvaluationCommandValidatorTests.cs`.
+- **Changed paths:**
+  - `src/Tillegal.Application/Features/AiEvaluations/Queries/GetAdminAiEvaluationById/GetAdminAiEvaluationByIdQuery.cs`
+  - `src/Tillegal.Application/Features/AiEvaluations/Queries/GetAdminAiEvaluationById/GetAdminAiEvaluationByIdQueryValidator.cs`
+  - `src/Tillegal.Application/Features/AiEvaluations/Queries/GetAdminAiEvaluationById/GetAdminAiEvaluationByIdQueryHandler.cs`
+  - `src/Tillegal.Api/Controllers/AdminAiEvaluationsController.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/AiEvaluations/GetAdminAiEvaluationByIdQueryHandlerTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/AiEvaluations/MessageEvaluationCommandValidatorTests.cs`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet test tests/Tillegal.Application.UnitTests/Tillegal.Application.UnitTests.csproj`: 217/217 passed.
+  - `dotnet test tests/Tillegal.ArchitectureTests/Tillegal.ArchitectureTests.csproj`: 7/7 passed.
+  - `dotnet format --no-restore --include ... --verify-no-changes`: Passed with 0 formatting changes.
+- **Next action:**
+  - None required. Admin evaluation by ID query endpoint is fully operational.

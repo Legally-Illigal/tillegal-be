@@ -1,11 +1,11 @@
 using Tillegal.Domain.Entities;
 using Tillegal.Domain.Interfaces.Repositories;
 using Tillegal.Domain.Interfaces.Services;
+using Tillegal.Domain.Models;
 
 namespace Tillegal.Domain.Services;
 
-public sealed class AiEvaluationService(
-    IAiEvaluationRepository evaluationRepository) : IAiEvaluationService
+public sealed class AiEvaluationService(IAiEvaluationRepository evaluationRepository) : IAiEvaluationService
 {
     public async Task<AiEvaluationLog> CreateEvaluationAsync(
         Guid messageId,
@@ -13,6 +13,7 @@ public sealed class AiEvaluationService(
         bool? isHelpful,
         int? rating,
         string? feedbackComment = null,
+        string? evaluatorRole = null,
         CancellationToken cancellationToken = default)
     {
         var evaluation = AiEvaluationLog.Create(
@@ -20,70 +21,11 @@ public sealed class AiEvaluationService(
             evaluatorUserId,
             isHelpful,
             rating,
-            feedbackComment);
+            feedbackComment,
+            evaluatorRole);
 
         await evaluationRepository.AddAsync(evaluation, cancellationToken);
         return evaluation;
-    }
-
-    public async Task<AiEvaluationLog?> GetByIdAsync(
-        Guid id,
-        CancellationToken cancellationToken = default)
-    {
-        return await evaluationRepository.GetByIdAsync(id, cancellationToken);
-    }
-
-    public async Task<AiEvaluationLog?> GetByMessageIdAsync(
-        Guid messageId,
-        CancellationToken cancellationToken = default)
-    {
-        return await evaluationRepository.GetByMessageIdAsync(messageId, cancellationToken);
-    }
-
-    public async Task<IReadOnlyList<AiEvaluationLog>> GetByEvaluatorUserIdAsync(
-        Guid userId,
-        CancellationToken cancellationToken = default)
-    {
-        return await evaluationRepository.GetByEvaluatorUserIdAsync(userId, cancellationToken);
-    }
-
-    public async Task<IReadOnlyList<AiEvaluationLog>> GetPagedAsync(
-        int skip,
-        int take,
-        bool? isHelpful = null,
-        int? rating = null,
-        Guid? evaluatorUserId = null,
-        CancellationToken cancellationToken = default)
-    {
-        var effectiveTake = take <= 0 ? 10 : Math.Min(take, 100);
-        var effectiveSkip = Math.Max(0, skip);
-
-        return await evaluationRepository.GetPagedAsync(
-            effectiveSkip,
-            effectiveTake,
-            isHelpful,
-            rating,
-            evaluatorUserId,
-            cancellationToken);
-    }
-
-    public async Task<int> GetCountAsync(
-        bool? isHelpful = null,
-        int? rating = null,
-        Guid? evaluatorUserId = null,
-        CancellationToken cancellationToken = default)
-    {
-        return await evaluationRepository.GetCountAsync(
-            isHelpful,
-            rating,
-            evaluatorUserId,
-            cancellationToken);
-    }
-
-    public async Task<(int TotalCount, double AverageRating, int HelpfulCount, int UnhelpfulCount)> GetSummaryAsync(
-        CancellationToken cancellationToken = default)
-    {
-        return await evaluationRepository.GetSummaryAsync(cancellationToken);
     }
 
     public async Task<AiEvaluationLog> UpdateEvaluationAsync(
@@ -108,6 +50,52 @@ public sealed class AiEvaluationService(
 
         evaluation.SoftDelete();
         await evaluationRepository.DeleteAsync(evaluation, cancellationToken);
+    }
+
+    public async Task<AiEvaluationLog?> GetEvaluationByIdAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        return await evaluationRepository.GetByIdAsync(id, cancellationToken);
+    }
+
+    public async Task<AiEvaluationLog?> GetEvaluationByMessageIdAsync(
+        Guid messageId,
+        CancellationToken cancellationToken = default)
+    {
+        return await evaluationRepository.GetByMessageIdAsync(messageId, cancellationToken);
+    }
+
+    public async Task<bool> ExistsForMessageAsync(
+        Guid messageId,
+        CancellationToken cancellationToken = default)
+    {
+        return await evaluationRepository.ExistsForMessageAsync(messageId, cancellationToken);
+    }
+
+    public async Task<(IReadOnlyList<AiEvaluationLog> Items, int TotalCount)> GetPagedEvaluationsAsync(
+        int pageNumber,
+        int pageSize,
+        bool? isHelpful = null,
+        int? rating = null,
+        Guid? evaluatorUserId = null,
+        string? evaluatorRole = null,
+        CancellationToken cancellationToken = default)
+    {
+        return await evaluationRepository.GetPagedAsync(
+            pageNumber,
+            pageSize,
+            isHelpful,
+            rating,
+            evaluatorUserId,
+            evaluatorRole,
+            cancellationToken);
+    }
+
+    public async Task<AiEvaluationSummary> GetSummaryAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return await evaluationRepository.GetSummaryAsync(cancellationToken);
     }
 }
 

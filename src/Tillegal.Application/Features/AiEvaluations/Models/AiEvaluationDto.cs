@@ -4,6 +4,7 @@ public sealed record AiEvaluationDto(
     Guid Id,
     Guid MessageId,
     Guid? EvaluatorUserId,
+    string? EvaluatorRole,
     bool? IsHelpful,
     int? Rating,
     string? FeedbackComment,

@@ -1,7 +1,6 @@
 namespace Tillegal.Api.Contracts.AiEvaluations;
 
 public sealed record CreateAiEvaluationApiRequest(
-    Guid MessageId,
     bool? IsHelpful,
     int? Rating,
     string? FeedbackComment);
@@ -15,6 +14,7 @@ public sealed record AiEvaluationApiResponse(
     Guid Id,
     Guid MessageId,
     Guid? EvaluatorUserId,
+    string? EvaluatorRole,
     bool? IsHelpful,
     int? Rating,
     string? FeedbackComment,
@@ -23,14 +23,17 @@ public sealed record AiEvaluationApiResponse(
 
 public sealed record AiEvaluationSummaryApiResponse(
     int TotalEvaluations,
-    double AverageRating,
     int HelpfulCount,
-    int UnhelpfulCount);
+    int UnhelpfulCount,
+    double AverageRating,
+    int LawyerEvaluationsCount,
+    int UserEvaluationsCount,
+    IReadOnlyDictionary<int, int> RatingDistribution);
 
 public sealed record PagedAiEvaluationsApiResponse(
     IReadOnlyList<AiEvaluationApiResponse> Items,
-    int TotalCount,
     int PageNumber,
     int PageSize,
+    int TotalCount,
     int TotalPages);
 

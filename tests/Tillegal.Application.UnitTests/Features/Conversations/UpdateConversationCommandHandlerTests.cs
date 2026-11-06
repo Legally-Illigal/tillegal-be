@@ -8,6 +8,7 @@ using Tillegal.Application.Common.Mappings;
 using Tillegal.Application.Features.Conversations.Commands.UpdateConversation;
 using Tillegal.Domain.Entities;
 using Tillegal.Domain.Interfaces.Services;
+using Xunit;
 
 namespace Tillegal.Application.UnitTests.Features.Conversations;
 
@@ -41,11 +42,24 @@ public sealed class UpdateConversationCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenUserIsAdmin_ShouldThrowForbiddenAccessException()
+    {
+        _currentUserService.UserId.Returns(Guid.CreateVersion7());
+        _currentUserService.Role.Returns("Admin");
+
+        var act = () => _handler.Handle(new UpdateConversationCommand(Guid.NewGuid(), "Tiêu đề mới"), CancellationToken.None);
+
+        await act.Should().ThrowAsync<ForbiddenAccessException>()
+            .WithMessage("Admin is not allowed to update conversations.");
+    }
+
+    [Fact]
     public async Task Handle_WhenConversationNotFound_ShouldThrowNotFoundException()
     {
         var userId = Guid.CreateVersion7();
         var convId = Guid.CreateVersion7();
         _currentUserService.UserId.Returns(userId);
+        _currentUserService.Role.Returns("User");
         _conversationService.GetConversationByIdAsync(convId, Arg.Any<CancellationToken>())
             .Returns((Conversation?)null);
 
@@ -55,14 +69,15 @@ public sealed class UpdateConversationCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenConversationBelongsToDifferentUser_ShouldThrowForbiddenAccessException()
+    public async Task Handle_WhenUserDoesNotOwnConversation_ShouldThrowForbiddenAccessException()
     {
-        var currentUserId = Guid.CreateVersion7();
+        var userId = Guid.CreateVersion7();
         var otherUserId = Guid.CreateVersion7();
         var convId = Guid.CreateVersion7();
-
-        _currentUserService.UserId.Returns(currentUserId);
         var conversation = Conversation.Create(otherUserId, "Tiêu đề cũ");
+
+        _currentUserService.UserId.Returns(userId);
+        _currentUserService.Role.Returns("User");
         _conversationService.GetConversationByIdAsync(convId, Arg.Any<CancellationToken>())
             .Returns(conversation);
 
@@ -72,22 +87,20 @@ public sealed class UpdateConversationCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenValid_ShouldUpdateTitleAndSaveChanges()
+    public async Task Handle_WhenValid_ShouldUpdateTitleAndSave()
     {
         var userId = Guid.CreateVersion7();
         var convId = Guid.CreateVersion7();
+        var conversation = Conversation.Create(userId, "Tiêu đề cũ");
 
         _currentUserService.UserId.Returns(userId);
-        var conversation = Conversation.Create(userId, "Tiêu đề cũ");
+        _currentUserService.Role.Returns("User");
         _conversationService.GetConversationByIdAsync(convId, Arg.Any<CancellationToken>())
             .Returns(conversation);
 
+        var updated = Conversation.Create(userId, "Tiêu đề mới");
         _conversationService.UpdateConversationTitleAsync(conversation, "Tiêu đề mới", Arg.Any<CancellationToken>())
-            .Returns(callInfo =>
-            {
-                conversation.UpdateTitle("Tiêu đề mới");
-                return Task.FromResult(conversation);
-            });
+            .Returns(updated);
 
         var result = await _handler.Handle(new UpdateConversationCommand(convId, "Tiêu đề mới"), CancellationToken.None);
 

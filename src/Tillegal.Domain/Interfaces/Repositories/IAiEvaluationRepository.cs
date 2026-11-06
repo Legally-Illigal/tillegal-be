@@ -1,4 +1,5 @@
 using Tillegal.Domain.Entities;
+using Tillegal.Domain.Models;
 
 namespace Tillegal.Domain.Interfaces.Repositories;
 
@@ -12,25 +13,8 @@ public interface IAiEvaluationRepository
         Guid messageId,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<AiEvaluationLog>> GetByEvaluatorUserIdAsync(
-        Guid userId,
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<AiEvaluationLog>> GetPagedAsync(
-        int skip,
-        int take,
-        bool? isHelpful = null,
-        int? rating = null,
-        Guid? evaluatorUserId = null,
-        CancellationToken cancellationToken = default);
-
-    Task<int> GetCountAsync(
-        bool? isHelpful = null,
-        int? rating = null,
-        Guid? evaluatorUserId = null,
-        CancellationToken cancellationToken = default);
-
-    Task<(int TotalCount, double AverageRating, int HelpfulCount, int UnhelpfulCount)> GetSummaryAsync(
+    Task<bool> ExistsForMessageAsync(
+        Guid messageId,
         CancellationToken cancellationToken = default);
 
     Task AddAsync(
@@ -43,6 +27,18 @@ public interface IAiEvaluationRepository
 
     Task DeleteAsync(
         AiEvaluationLog evaluation,
+        CancellationToken cancellationToken = default);
+
+    Task<(IReadOnlyList<AiEvaluationLog> Items, int TotalCount)> GetPagedAsync(
+        int pageNumber,
+        int pageSize,
+        bool? isHelpful = null,
+        int? rating = null,
+        Guid? evaluatorUserId = null,
+        string? evaluatorRole = null,
+        CancellationToken cancellationToken = default);
+
+    Task<AiEvaluationSummary> GetSummaryAsync(
         CancellationToken cancellationToken = default);
 }
 
