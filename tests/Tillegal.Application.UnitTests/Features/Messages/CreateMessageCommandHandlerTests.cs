@@ -50,12 +50,30 @@ public sealed class CreateMessageCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenUserIsAdmin_ShouldThrowForbiddenAccessException()
+    {
+        // Arrange
+        _currentUserService.UserId.Returns(Guid.CreateVersion7());
+        _currentUserService.Role.Returns("Admin");
+
+        var command = new CreateMessageCommand(Guid.CreateVersion7(), "user", "Hello");
+
+        // Act
+        var act = () => _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<ForbiddenAccessException>()
+            .WithMessage("Admin is not allowed to send messages.");
+    }
+
+    [Fact]
     public async Task Handle_WhenConversationNotFound_ShouldThrowNotFoundException()
     {
         // Arrange
         var userId = Guid.CreateVersion7();
         var conversationId = Guid.CreateVersion7();
         _currentUserService.UserId.Returns(userId);
+        _currentUserService.Role.Returns("User");
         _conversationService.GetConversationByIdAsync(conversationId, Arg.Any<CancellationToken>())
             .Returns((Conversation?)null);
 
@@ -69,15 +87,16 @@ public sealed class CreateMessageCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenConversationBelongsToDifferentUser_ShouldThrowForbiddenAccessException()
+    public async Task Handle_WhenUserDoesNotOwnConversation_ShouldThrowForbiddenAccessException()
     {
         // Arrange
-        var currentUserId = Guid.CreateVersion7();
-        var conversationOwnerId = Guid.CreateVersion7();
+        var userId = Guid.CreateVersion7();
+        var otherUserId = Guid.CreateVersion7();
         var conversationId = Guid.CreateVersion7();
+        var conversation = Conversation.Create(otherUserId, "User's Chat");
 
-        _currentUserService.UserId.Returns(currentUserId);
-        var conversation = Conversation.Create(conversationOwnerId, "Conversation Title");
+        _currentUserService.UserId.Returns(userId);
+        _currentUserService.Role.Returns("User");
         _conversationService.GetConversationByIdAsync(conversationId, Arg.Any<CancellationToken>())
             .Returns(conversation);
 
@@ -91,31 +110,31 @@ public sealed class CreateMessageCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenValid_ShouldCreateMessageAndSave()
+    public async Task Handle_WithValidData_ShouldCreateMessageAndCommit()
     {
         // Arrange
         var userId = Guid.CreateVersion7();
         var conversationId = Guid.CreateVersion7();
+        var conversation = Conversation.Create(userId, "My Chat");
+        var created = ConversationMessage.CreateUserMessage(conversationId, "Hello legal AI");
 
         _currentUserService.UserId.Returns(userId);
-        var conversation = Conversation.Create(userId, "Conversation Title");
+        _currentUserService.Role.Returns("User");
         _conversationService.GetConversationByIdAsync(conversationId, Arg.Any<CancellationToken>())
             .Returns(conversation);
+        _messageService.CreateMessageAsync(conversationId, "user", "Hello legal AI", null, Arg.Any<CancellationToken>())
+            .Returns(created);
 
-        var createdMessage = ConversationMessage.CreateUserMessage(conversationId, "Hello");
-        _messageService.CreateMessageAsync(conversationId, "user", "Hello", null, Arg.Any<CancellationToken>())
-            .Returns(createdMessage);
-
-        var command = new CreateMessageCommand(conversationId, "user", "Hello");
+        var command = new CreateMessageCommand(conversationId, "user", "Hello legal AI");
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
         result.Should().NotBeNull();
-        result.ConversationId.Should().Be(conversationId);
         result.Role.Should().Be("user");
-        result.Content.Should().Be("Hello");
+        result.Content.Should().Be("Hello legal AI");
+        result.ConversationId.Should().Be(conversationId);
         await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 }

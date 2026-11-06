@@ -12,4 +12,5 @@ public sealed class ConversationDataModel : BaseDataModel
     public ICollection<ConversationMessageDataModel> Messages { get; set; } = new List<ConversationMessageDataModel>();
 
     public ICollection<UserAttachmentDataModel> Attachments { get; set; } = new List<UserAttachmentDataModel>();
+
 }

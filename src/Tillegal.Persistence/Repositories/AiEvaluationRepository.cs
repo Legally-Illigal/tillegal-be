@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Tillegal.Domain.Entities;
 using Tillegal.Domain.Interfaces.Repositories;
+using Tillegal.Domain.Models;
 using Tillegal.Persistence.Context;
 using Tillegal.Persistence.DataModels;
 
@@ -12,87 +13,34 @@ public sealed class AiEvaluationRepository(AppDbContext dbContext) : IAiEvaluati
         Guid id,
         CancellationToken cancellationToken = default)
     {
-        var dataModel = await dbContext.AiEvaluationLogs
+        var model = await dbContext.AiEvaluationLogs
             .AsNoTracking()
+            .Include(e => e.EvaluatorUser)
+                .ThenInclude(u => u!.Role)
             .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
 
-        return dataModel is null ? null : MapToEntity(dataModel);
+        return model is null ? null : ToDomain(model);
     }
 
     public async Task<AiEvaluationLog?> GetByMessageIdAsync(
         Guid messageId,
         CancellationToken cancellationToken = default)
     {
-        var dataModel = await dbContext.AiEvaluationLogs
+        var model = await dbContext.AiEvaluationLogs
             .AsNoTracking()
+            .Include(e => e.EvaluatorUser)
+                .ThenInclude(u => u!.Role)
             .FirstOrDefaultAsync(e => e.MessageId == messageId, cancellationToken);
 
-        return dataModel is null ? null : MapToEntity(dataModel);
+        return model is null ? null : ToDomain(model);
     }
 
-    public async Task<IReadOnlyList<AiEvaluationLog>> GetByEvaluatorUserIdAsync(
-        Guid userId,
+    public async Task<bool> ExistsForMessageAsync(
+        Guid messageId,
         CancellationToken cancellationToken = default)
     {
-        var dataModels = await dbContext.AiEvaluationLogs
-            .AsNoTracking()
-            .Where(e => e.EvaluatorUserId == userId)
-            .OrderByDescending(e => e.CreatedAt)
-            .ToListAsync(cancellationToken);
-
-        return dataModels.Select(MapToEntity).ToList();
-    }
-
-    public async Task<IReadOnlyList<AiEvaluationLog>> GetPagedAsync(
-        int skip,
-        int take,
-        bool? isHelpful = null,
-        int? rating = null,
-        Guid? evaluatorUserId = null,
-        CancellationToken cancellationToken = default)
-    {
-        var query = ApplyFilters(dbContext.AiEvaluationLogs.AsNoTracking(), isHelpful, rating, evaluatorUserId);
-
-        var dataModels = await query
-            .OrderByDescending(e => e.CreatedAt)
-            .Skip(skip)
-            .Take(take)
-            .ToListAsync(cancellationToken);
-
-        return dataModels.Select(MapToEntity).ToList();
-    }
-
-    public async Task<int> GetCountAsync(
-        bool? isHelpful = null,
-        int? rating = null,
-        Guid? evaluatorUserId = null,
-        CancellationToken cancellationToken = default)
-    {
-        var query = ApplyFilters(dbContext.AiEvaluationLogs.AsNoTracking(), isHelpful, rating, evaluatorUserId);
-        return await query.CountAsync(cancellationToken);
-    }
-
-    public async Task<(int TotalCount, double AverageRating, int HelpfulCount, int UnhelpfulCount)> GetSummaryAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var query = dbContext.AiEvaluationLogs.AsNoTracking();
-
-        var totalCount = await query.CountAsync(cancellationToken);
-        if (totalCount == 0)
-        {
-            return (0, 0.0, 0, 0);
-        }
-
-        var ratedQuery = query.Where(e => e.Rating.HasValue);
-        var ratedCount = await ratedQuery.CountAsync(cancellationToken);
-        var averageRating = ratedCount > 0
-            ? await ratedQuery.AverageAsync(e => (double)e.Rating!.Value, cancellationToken)
-            : 0.0;
-
-        var helpfulCount = await query.CountAsync(e => e.IsHelpful == true, cancellationToken);
-        var unhelpfulCount = await query.CountAsync(e => e.IsHelpful == false, cancellationToken);
-
-        return (totalCount, Math.Round(averageRating, 2), helpfulCount, unhelpfulCount);
+        return await dbContext.AiEvaluationLogs
+            .AnyAsync(e => e.MessageId == messageId, cancellationToken);
     }
 
     public async Task AddAsync(
@@ -101,8 +49,8 @@ public sealed class AiEvaluationRepository(AppDbContext dbContext) : IAiEvaluati
     {
         ArgumentNullException.ThrowIfNull(evaluation);
 
-        var dataModel = MapToDataModel(evaluation);
-        await dbContext.AiEvaluationLogs.AddAsync(dataModel, cancellationToken);
+        var model = ToDataModel(evaluation);
+        await dbContext.AiEvaluationLogs.AddAsync(model, cancellationToken);
     }
 
     public async Task UpdateAsync(
@@ -111,17 +59,20 @@ public sealed class AiEvaluationRepository(AppDbContext dbContext) : IAiEvaluati
     {
         ArgumentNullException.ThrowIfNull(evaluation);
 
-        var dataModel = await dbContext.AiEvaluationLogs
+        var model = await dbContext.AiEvaluationLogs
             .FirstOrDefaultAsync(e => e.Id == evaluation.Id, cancellationToken);
 
-        if (dataModel is not null)
+        if (model is null)
         {
-            dataModel.IsHelpful = evaluation.IsHelpful;
-            dataModel.Rating = evaluation.Rating;
-            dataModel.FeedbackComment = evaluation.FeedbackComment;
-            dataModel.UpdatedAt = evaluation.UpdatedAt;
-            dataModel.DeletedAt = evaluation.DeletedAt;
+            model = ToDataModel(evaluation);
+            dbContext.AiEvaluationLogs.Update(model);
+            return;
         }
+
+        model.IsHelpful = evaluation.IsHelpful;
+        model.Rating = evaluation.Rating;
+        model.FeedbackComment = evaluation.FeedbackComment;
+        model.UpdatedAt = evaluation.UpdatedAt ?? DateTimeOffset.UtcNow;
     }
 
     public async Task DeleteAsync(
@@ -130,22 +81,31 @@ public sealed class AiEvaluationRepository(AppDbContext dbContext) : IAiEvaluati
     {
         ArgumentNullException.ThrowIfNull(evaluation);
 
-        var dataModel = await dbContext.AiEvaluationLogs
+        var model = await dbContext.AiEvaluationLogs
             .FirstOrDefaultAsync(e => e.Id == evaluation.Id, cancellationToken);
 
-        if (dataModel is not null)
+        if (model is not null)
         {
-            dataModel.DeletedAt = evaluation.DeletedAt ?? DateTimeOffset.UtcNow;
-            dataModel.UpdatedAt = evaluation.UpdatedAt ?? DateTimeOffset.UtcNow;
+            model.DeletedAt = evaluation.DeletedAt ?? DateTimeOffset.UtcNow;
+            model.UpdatedAt = DateTimeOffset.UtcNow;
         }
     }
 
-    private static IQueryable<AiEvaluationLogDataModel> ApplyFilters(
-        IQueryable<AiEvaluationLogDataModel> query,
-        bool? isHelpful,
-        int? rating,
-        Guid? evaluatorUserId)
+    public async Task<(IReadOnlyList<AiEvaluationLog> Items, int TotalCount)> GetPagedAsync(
+        int pageNumber,
+        int pageSize,
+        bool? isHelpful = null,
+        int? rating = null,
+        Guid? evaluatorUserId = null,
+        string? evaluatorRole = null,
+        CancellationToken cancellationToken = default)
     {
+        var query = dbContext.AiEvaluationLogs
+            .AsNoTracking()
+            .Include(e => e.EvaluatorUser)
+                .ThenInclude(u => u!.Role)
+            .AsQueryable();
+
         if (isHelpful.HasValue)
         {
             query = query.Where(e => e.IsHelpful == isHelpful.Value);
@@ -161,36 +121,112 @@ public sealed class AiEvaluationRepository(AppDbContext dbContext) : IAiEvaluati
             query = query.Where(e => e.EvaluatorUserId == evaluatorUserId.Value);
         }
 
-        return query;
+        if (!string.IsNullOrWhiteSpace(evaluatorRole))
+        {
+            var roleFilter = evaluatorRole.Trim();
+            if (string.Equals(roleFilter, "Lawyer", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(roleFilter, "Lawer", StringComparison.OrdinalIgnoreCase))
+            {
+                query = query.Where(e => e.EvaluatorUser != null &&
+                    (e.EvaluatorUser.Role.Name == "Lawer" || e.EvaluatorUser.Role.Name == "Lawyer"));
+            }
+            else
+            {
+                query = query.Where(e => e.EvaluatorUser != null &&
+                    e.EvaluatorUser.Role.Name == roleFilter);
+            }
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+
+        var models = await query
+            .OrderByDescending(e => e.CreatedAt)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        var items = models.Select(ToDomain).ToList();
+        return (items, totalCount);
     }
 
-    private static AiEvaluationLog MapToEntity(AiEvaluationLogDataModel dataModel)
+    public async Task<AiEvaluationSummary> GetSummaryAsync(
+        CancellationToken cancellationToken = default)
     {
-        return new AiEvaluationLog(
-            dataModel.Id,
-            dataModel.MessageId,
-            dataModel.EvaluatorUserId,
-            dataModel.IsHelpful,
-            dataModel.Rating,
-            dataModel.FeedbackComment,
-            dataModel.CreatedAt,
-            dataModel.UpdatedAt,
-            dataModel.DeletedAt);
+        var query = dbContext.AiEvaluationLogs
+            .AsNoTracking()
+            .Include(e => e.EvaluatorUser)
+                .ThenInclude(u => u!.Role)
+            .AsQueryable();
+
+        var totalEvaluations = await query.CountAsync(cancellationToken);
+        var helpfulCount = await query.CountAsync(e => e.IsHelpful == true, cancellationToken);
+        var unhelpfulCount = await query.CountAsync(e => e.IsHelpful == false, cancellationToken);
+
+        var ratedEvaluations = query.Where(e => e.Rating.HasValue);
+        var averageRating = await ratedEvaluations.AnyAsync(cancellationToken)
+            ? await ratedEvaluations.AverageAsync(e => (double)e.Rating!.Value, cancellationToken)
+            : 0.0;
+
+        var lawyerCount = await query.CountAsync(e => e.EvaluatorUser != null &&
+            (e.EvaluatorUser.Role.Name == "Lawer" || e.EvaluatorUser.Role.Name == "Lawyer"),
+            cancellationToken);
+
+        var userCount = await query.CountAsync(e => e.EvaluatorUser != null &&
+            e.EvaluatorUser.Role.Name == "User",
+            cancellationToken);
+
+        var ratingDistribution = new Dictionary<int, int>();
+        for (var star = 1; star <= 5; star++)
+        {
+            var starCount = await query.CountAsync(e => e.Rating == star, cancellationToken);
+            ratingDistribution[star] = starCount;
+        }
+
+        return new AiEvaluationSummary(
+            totalEvaluations,
+            helpfulCount,
+            unhelpfulCount,
+            Math.Round(averageRating, 2),
+            lawyerCount,
+            userCount,
+            ratingDistribution);
     }
 
-    private static AiEvaluationLogDataModel MapToDataModel(AiEvaluationLog entity)
+    private static AiEvaluationLog ToDomain(AiEvaluationLogDataModel model)
+    {
+        var role = model.EvaluatorUser?.Role?.Name;
+        // Normalize "Lawer" to "Lawyer" for consistent presentation
+        if (string.Equals(role, "Lawer", StringComparison.OrdinalIgnoreCase))
+        {
+            role = "Lawyer";
+        }
+
+        return new AiEvaluationLog(
+            model.Id,
+            model.MessageId,
+            model.EvaluatorUserId,
+            model.IsHelpful,
+            model.Rating,
+            model.FeedbackComment,
+            model.CreatedAt,
+            model.UpdatedAt,
+            model.DeletedAt,
+            role);
+    }
+
+    private static AiEvaluationLogDataModel ToDataModel(AiEvaluationLog domain)
     {
         return new AiEvaluationLogDataModel
         {
-            Id = entity.Id,
-            MessageId = entity.MessageId,
-            EvaluatorUserId = entity.EvaluatorUserId,
-            IsHelpful = entity.IsHelpful,
-            Rating = entity.Rating,
-            FeedbackComment = entity.FeedbackComment,
-            CreatedAt = entity.CreatedAt,
-            UpdatedAt = entity.UpdatedAt,
-            DeletedAt = entity.DeletedAt
+            Id = domain.Id,
+            MessageId = domain.MessageId,
+            EvaluatorUserId = domain.EvaluatorUserId,
+            IsHelpful = domain.IsHelpful,
+            Rating = domain.Rating,
+            FeedbackComment = domain.FeedbackComment,
+            CreatedAt = domain.CreatedAt,
+            UpdatedAt = domain.UpdatedAt,
+            DeletedAt = domain.DeletedAt
         };
     }
 }

@@ -1,4 +1,5 @@
 using Tillegal.Domain.Entities;
+using Tillegal.Domain.Models;
 
 namespace Tillegal.Domain.Interfaces.Services;
 
@@ -10,35 +11,7 @@ public interface IAiEvaluationService
         bool? isHelpful,
         int? rating,
         string? feedbackComment = null,
-        CancellationToken cancellationToken = default);
-
-    Task<AiEvaluationLog?> GetByIdAsync(
-        Guid id,
-        CancellationToken cancellationToken = default);
-
-    Task<AiEvaluationLog?> GetByMessageIdAsync(
-        Guid messageId,
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<AiEvaluationLog>> GetByEvaluatorUserIdAsync(
-        Guid userId,
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<AiEvaluationLog>> GetPagedAsync(
-        int skip,
-        int take,
-        bool? isHelpful = null,
-        int? rating = null,
-        Guid? evaluatorUserId = null,
-        CancellationToken cancellationToken = default);
-
-    Task<int> GetCountAsync(
-        bool? isHelpful = null,
-        int? rating = null,
-        Guid? evaluatorUserId = null,
-        CancellationToken cancellationToken = default);
-
-    Task<(int TotalCount, double AverageRating, int HelpfulCount, int UnhelpfulCount)> GetSummaryAsync(
+        string? evaluatorRole = null,
         CancellationToken cancellationToken = default);
 
     Task<AiEvaluationLog> UpdateEvaluationAsync(
@@ -50,6 +23,30 @@ public interface IAiEvaluationService
 
     Task DeleteEvaluationAsync(
         AiEvaluationLog evaluation,
+        CancellationToken cancellationToken = default);
+
+    Task<AiEvaluationLog?> GetEvaluationByIdAsync(
+        Guid id,
+        CancellationToken cancellationToken = default);
+
+    Task<AiEvaluationLog?> GetEvaluationByMessageIdAsync(
+        Guid messageId,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> ExistsForMessageAsync(
+        Guid messageId,
+        CancellationToken cancellationToken = default);
+
+    Task<(IReadOnlyList<AiEvaluationLog> Items, int TotalCount)> GetPagedEvaluationsAsync(
+        int pageNumber,
+        int pageSize,
+        bool? isHelpful = null,
+        int? rating = null,
+        Guid? evaluatorUserId = null,
+        string? evaluatorRole = null,
+        CancellationToken cancellationToken = default);
+
+    Task<AiEvaluationSummary> GetSummaryAsync(
         CancellationToken cancellationToken = default);
 }
 

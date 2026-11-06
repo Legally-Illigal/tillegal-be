@@ -714,41 +714,6 @@ public sealed class ComprehensiveDatabaseDataSeed(
             }
         }
 
-        // 4. EVALUATE_MESSAGE (6 logs)
-        var evalAudits = new[]
-        {
-            (SeedIds.UserRegular1, "User", "14.232.208.45", 5, true),
-            (SeedIds.UserRegular2, "User", "113.161.72.102", 5, true),
-            (SeedIds.UserRegular3, "User", "171.244.15.88", 2, false),
-            (SeedIds.UserRegular4, "User", "27.72.60.15", 4, true),
-            (SeedIds.UserLawer1, "Lawer", "1.53.24.120", 5, true),
-            (SeedIds.UserLawer2, "Lawer", "115.79.138.90", 5, true)
-        };
-
-        for (var i = 0; i < evalAudits.Length; i++)
-        {
-            var id = Guid.Parse($"70000000-0000-0000-0000-{i + 25:D12}");
-            if (!existingAuditIds.Contains(id))
-            {
-                var (userId, role, ip, rating, isHelpful) = evalAudits[i];
-                auditLogs.Add(new AuditLogDataModel
-                {
-                    Id = id,
-                    EventType = "AI_FEEDBACK_EVENT",
-                    ActorUserId = userId,
-                    ActorRole = role,
-                    IpAddress = ip,
-                    TargetType = "AiEvaluationLog",
-                    TargetUserId = userId,
-                    Action = "EVALUATE_MESSAGE",
-                    Status = "SUCCESS",
-                    Description = $"Đánh giá phản hồi trợ lý AI: Rating {rating}/5 sao, Hữu ích={isHelpful}.",
-                    NewValues = JsonDocument.Parse($"{{\"rating\":{rating},\"isHelpful\":{isHelpful.ToString().ToLower()}}}"),
-                    CreatedAt = DateTimeOffset.UtcNow.AddDays(-8).AddHours(i)
-                });
-            }
-        }
-
         if (auditLogs.Count > 0)
         {
             await dbContext.AuditLogs.AddRangeAsync(auditLogs, cancellationToken);
@@ -756,3 +721,5 @@ public sealed class ComprehensiveDatabaseDataSeed(
         }
     }
 }
+
+

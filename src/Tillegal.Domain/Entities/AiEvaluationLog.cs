@@ -18,7 +18,8 @@ public sealed class AiEvaluationLog : BaseEntity
         string? feedbackComment,
         DateTimeOffset createdAt,
         DateTimeOffset? updatedAt,
-        DateTimeOffset? deletedAt)
+        DateTimeOffset? deletedAt,
+        string? evaluatorRole = null)
         : base(id, createdAt, updatedAt, deletedAt)
     {
         MessageId = messageId;
@@ -26,6 +27,7 @@ public sealed class AiEvaluationLog : BaseEntity
         IsHelpful = isHelpful;
         Rating = rating;
         FeedbackComment = feedbackComment;
+        EvaluatorRole = evaluatorRole;
     }
 
     public static AiEvaluationLog Create(
@@ -33,7 +35,8 @@ public sealed class AiEvaluationLog : BaseEntity
         Guid? evaluatorUserId,
         bool? isHelpful,
         int? rating,
-        string? feedbackComment = null)
+        string? feedbackComment = null,
+        string? evaluatorRole = null)
     {
         if (messageId == Guid.Empty)
         {
@@ -49,7 +52,8 @@ public sealed class AiEvaluationLog : BaseEntity
             EvaluatorUserId = evaluatorUserId,
             IsHelpful = isHelpful,
             Rating = rating,
-            FeedbackComment = string.IsNullOrWhiteSpace(feedbackComment) ? null : feedbackComment.Trim()
+            FeedbackComment = string.IsNullOrWhiteSpace(feedbackComment) ? null : feedbackComment.Trim(),
+            EvaluatorRole = evaluatorRole
         };
     }
 
@@ -62,6 +66,8 @@ public sealed class AiEvaluationLog : BaseEntity
     public int? Rating { get; private set; }
 
     public string? FeedbackComment { get; private set; }
+
+    public string? EvaluatorRole { get; private set; }
 
     public void Update(
         bool? isHelpful,
@@ -94,3 +100,4 @@ public sealed class AiEvaluationLog : BaseEntity
         }
     }
 }
+

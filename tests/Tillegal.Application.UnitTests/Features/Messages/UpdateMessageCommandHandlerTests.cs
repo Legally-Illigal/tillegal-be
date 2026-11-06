@@ -48,11 +48,26 @@ public sealed class UpdateMessageCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenUserIsAdmin_ShouldThrowForbiddenAccessException()
+    {
+        _currentUserService.UserId.Returns(Guid.CreateVersion7());
+        _currentUserService.Role.Returns("Admin");
+
+        var command = new UpdateMessageCommand(Guid.CreateVersion7(), Guid.CreateVersion7(), "New content");
+
+        var act = () => _handler.Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<ForbiddenAccessException>()
+            .WithMessage("Admin is not allowed to update messages.");
+    }
+
+    [Fact]
     public async Task Handle_WhenConversationNotFound_ShouldThrowNotFoundException()
     {
         var userId = Guid.CreateVersion7();
         var conversationId = Guid.CreateVersion7();
         _currentUserService.UserId.Returns(userId);
+        _currentUserService.Role.Returns("User");
         _conversationService.GetConversationByIdAsync(conversationId, Arg.Any<CancellationToken>())
             .Returns((Conversation?)null);
 
@@ -64,14 +79,15 @@ public sealed class UpdateMessageCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenConversationBelongsToDifferentUser_ShouldThrowForbiddenAccessException()
+    public async Task Handle_WhenUserDoesNotOwnConversation_ShouldThrowForbiddenAccessException()
     {
-        var currentUserId = Guid.CreateVersion7();
-        var conversationOwnerId = Guid.CreateVersion7();
+        var userId = Guid.CreateVersion7();
+        var otherUserId = Guid.CreateVersion7();
         var conversationId = Guid.CreateVersion7();
+        var conversation = Conversation.Create(otherUserId, "Title");
 
-        _currentUserService.UserId.Returns(currentUserId);
-        var conversation = Conversation.Create(conversationOwnerId, "Title");
+        _currentUserService.UserId.Returns(userId);
+        _currentUserService.Role.Returns("User");
         _conversationService.GetConversationByIdAsync(conversationId, Arg.Any<CancellationToken>())
             .Returns(conversation);
 
@@ -90,6 +106,7 @@ public sealed class UpdateMessageCommandHandlerTests
         var messageId = Guid.CreateVersion7();
 
         _currentUserService.UserId.Returns(userId);
+        _currentUserService.Role.Returns("User");
         var conversation = Conversation.Create(userId, "Title");
         _conversationService.GetConversationByIdAsync(conversationId, Arg.Any<CancellationToken>())
             .Returns(conversation);
@@ -105,7 +122,7 @@ public sealed class UpdateMessageCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenMessageConversationIdMismatched_ShouldThrowNotFoundException()
+    public async Task Handle_WhenMessageBelongsToDifferentConversation_ShouldThrowNotFoundException()
     {
         var userId = Guid.CreateVersion7();
         var conversationId = Guid.CreateVersion7();
@@ -113,6 +130,7 @@ public sealed class UpdateMessageCommandHandlerTests
         var messageId = Guid.CreateVersion7();
 
         _currentUserService.UserId.Returns(userId);
+        _currentUserService.Role.Returns("User");
         var conversation = Conversation.Create(userId, "Title");
         _conversationService.GetConversationByIdAsync(conversationId, Arg.Any<CancellationToken>())
             .Returns(conversation);
@@ -135,6 +153,7 @@ public sealed class UpdateMessageCommandHandlerTests
         var conversationId = Guid.CreateVersion7();
 
         _currentUserService.UserId.Returns(userId);
+        _currentUserService.Role.Returns("User");
         var conversation = Conversation.Create(userId, "Title");
         _conversationService.GetConversationByIdAsync(conversationId, Arg.Any<CancellationToken>())
             .Returns(conversation);

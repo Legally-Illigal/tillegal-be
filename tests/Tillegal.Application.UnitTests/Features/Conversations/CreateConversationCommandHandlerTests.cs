@@ -8,6 +8,7 @@ using Tillegal.Application.Common.Mappings;
 using Tillegal.Application.Features.Conversations.Commands.CreateConversation;
 using Tillegal.Domain.Entities;
 using Tillegal.Domain.Interfaces.Services;
+using Xunit;
 
 namespace Tillegal.Application.UnitTests.Features.Conversations;
 
@@ -41,6 +42,21 @@ public sealed class CreateConversationCommandHandlerTests
 
         // Assert
         await act.Should().ThrowAsync<UnauthorizedException>();
+    }
+
+    [Fact]
+    public async Task Handle_WhenUserIsAdmin_ShouldThrowForbiddenAccessException()
+    {
+        // Arrange
+        _currentUserService.UserId.Returns(Guid.CreateVersion7());
+        _currentUserService.Role.Returns("Admin");
+
+        // Act
+        var act = () => _handler.Handle(new CreateConversationCommand(), CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<ForbiddenAccessException>()
+            .WithMessage("Admin is not allowed to create conversations or participate in chat.");
     }
 
     [Fact]

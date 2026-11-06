@@ -5,6 +5,7 @@ using Tillegal.Application.Common.Interfaces;
 using Tillegal.Application.Features.Conversations.Commands.DeleteConversation;
 using Tillegal.Domain.Entities;
 using Tillegal.Domain.Interfaces.Services;
+using Xunit;
 
 namespace Tillegal.Application.UnitTests.Features.Conversations;
 
@@ -34,11 +35,24 @@ public sealed class DeleteConversationCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenUserIsAdmin_ShouldThrowForbiddenAccessException()
+    {
+        _currentUserService.UserId.Returns(Guid.CreateVersion7());
+        _currentUserService.Role.Returns("Admin");
+
+        var act = () => _handler.Handle(new DeleteConversationCommand(Guid.NewGuid()), CancellationToken.None);
+
+        await act.Should().ThrowAsync<ForbiddenAccessException>()
+            .WithMessage("Admin is not allowed to delete conversations.");
+    }
+
+    [Fact]
     public async Task Handle_WhenConversationNotFound_ShouldThrowNotFoundException()
     {
         var userId = Guid.CreateVersion7();
         var convId = Guid.CreateVersion7();
         _currentUserService.UserId.Returns(userId);
+        _currentUserService.Role.Returns("User");
         _conversationService.GetConversationByIdAsync(convId, Arg.Any<CancellationToken>())
             .Returns((Conversation?)null);
 
@@ -48,14 +62,15 @@ public sealed class DeleteConversationCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenConversationBelongsToDifferentUser_ShouldThrowForbiddenAccessException()
+    public async Task Handle_WhenUserDoesNotOwnConversation_ShouldThrowForbiddenAccessException()
     {
-        var currentUserId = Guid.CreateVersion7();
+        var userId = Guid.CreateVersion7();
         var otherUserId = Guid.CreateVersion7();
         var convId = Guid.CreateVersion7();
+        var conversation = Conversation.Create(otherUserId, "Title");
 
-        _currentUserService.UserId.Returns(currentUserId);
-        var conversation = Conversation.Create(otherUserId, "Hội thoại");
+        _currentUserService.UserId.Returns(userId);
+        _currentUserService.Role.Returns("User");
         _conversationService.GetConversationByIdAsync(convId, Arg.Any<CancellationToken>())
             .Returns(conversation);
 
@@ -65,13 +80,14 @@ public sealed class DeleteConversationCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenValid_ShouldCallDeleteAndSaveChangesAsync()
+    public async Task Handle_WhenValid_ShouldDeleteAndSave()
     {
         var userId = Guid.CreateVersion7();
         var convId = Guid.CreateVersion7();
+        var conversation = Conversation.Create(userId, "Title");
 
         _currentUserService.UserId.Returns(userId);
-        var conversation = Conversation.Create(userId, "Hội thoại");
+        _currentUserService.Role.Returns("User");
         _conversationService.GetConversationByIdAsync(convId, Arg.Any<CancellationToken>())
             .Returns(conversation);
 
