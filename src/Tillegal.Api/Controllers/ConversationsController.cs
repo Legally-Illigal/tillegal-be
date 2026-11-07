@@ -4,12 +4,18 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Tillegal.Api.Contracts.AiEvaluations;
+using Tillegal.Api.Contracts.Attachments;
 using Tillegal.Api.Contracts.Conversations;
 using Tillegal.Api.Contracts.Messages;
 using Tillegal.Application.Features.AiEvaluations.Commands.CreateMessageEvaluation;
 using Tillegal.Application.Features.AiEvaluations.Commands.DeleteMessageEvaluation;
 using Tillegal.Application.Features.AiEvaluations.Commands.UpdateMessageEvaluation;
 using Tillegal.Application.Features.AiEvaluations.Queries.GetMessageEvaluation;
+using Tillegal.Application.Features.Attachments.Commands.DeleteAttachment;
+using Tillegal.Application.Features.Attachments.Commands.UploadAttachment;
+using Tillegal.Application.Features.Attachments.Queries.DownloadAttachment;
+using Tillegal.Application.Features.Attachments.Queries.GetAttachmentById;
+using Tillegal.Application.Features.Attachments.Queries.GetAttachmentsByConversationId;
 using Tillegal.Application.Features.Conversations.Commands.CreateConversation;
 using Tillegal.Application.Features.Conversations.Commands.DeleteConversation;
 using Tillegal.Application.Features.Conversations.Commands.UpdateConversation;
@@ -290,6 +296,106 @@ public sealed class ConversationsController(ISender mediator, IMapper mapper)
     {
         var command = new DeleteMessageEvaluationCommand(conversationId, messageId);
         await Mediator.Send(command, cancellationToken);
+
+        return NoContent();
+    }
+
+    [HttpPost("{conversationId:guid}/attachments")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(AttachmentApiResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UploadAttachment(
+        [FromRoute] Guid conversationId,
+        IFormFile file,
+        CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length == 0)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Invalid file",
+                Detail = "A non-empty file must be provided.",
+                Status = StatusCodes.Status400BadRequest
+            });
+        }
+
+        using var stream = file.OpenReadStream();
+        var command = new UploadAttachmentCommand(
+            conversationId,
+            file.FileName,
+            file.ContentType,
+            file.Length,
+            stream);
+
+        var result = await Mediator.Send(command, cancellationToken);
+        var response = Mapper.Map<AttachmentApiResponse>(result);
+
+        return CreatedAtAction(
+            nameof(GetAttachmentById),
+            new { conversationId = response.ConversationId, attachmentId = response.Id },
+            response);
+    }
+
+    [HttpGet("{conversationId:guid}/attachments")]
+    [ProducesResponseType(typeof(IReadOnlyList<AttachmentApiResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetAttachments(
+        [FromRoute] Guid conversationId,
+        CancellationToken cancellationToken)
+    {
+        var result = await Mediator.Send(new GetAttachmentsByConversationIdQuery(conversationId), cancellationToken);
+        var response = Mapper.Map<IReadOnlyList<AttachmentApiResponse>>(result);
+
+        return Ok(response);
+    }
+
+    [HttpGet("{conversationId:guid}/attachments/{attachmentId:guid}")]
+    [ProducesResponseType(typeof(AttachmentApiResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetAttachmentById(
+        [FromRoute] Guid conversationId,
+        [FromRoute] Guid attachmentId,
+        CancellationToken cancellationToken)
+    {
+        var result = await Mediator.Send(new GetAttachmentByIdQuery(conversationId, attachmentId), cancellationToken);
+        var response = Mapper.Map<AttachmentApiResponse>(result);
+
+        return Ok(response);
+    }
+
+    [HttpGet("{conversationId:guid}/attachments/{attachmentId:guid}/download")]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DownloadAttachment(
+        [FromRoute] Guid conversationId,
+        [FromRoute] Guid attachmentId,
+        CancellationToken cancellationToken)
+    {
+        var result = await Mediator.Send(new DownloadAttachmentQuery(conversationId, attachmentId), cancellationToken);
+
+        return File(result.Content, result.ContentType, result.FileName);
+    }
+
+    [HttpDelete("{conversationId:guid}/attachments/{attachmentId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteAttachment(
+        [FromRoute] Guid conversationId,
+        [FromRoute] Guid attachmentId,
+        CancellationToken cancellationToken)
+    {
+        await Mediator.Send(new DeleteAttachmentCommand(conversationId, attachmentId), cancellationToken);
 
         return NoContent();
     }

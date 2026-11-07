@@ -18,6 +18,8 @@ public sealed class UserAttachmentDataModel : BaseDataModel
 
     public int? TokenCount { get; set; }
 
+    public string? FileHash { get; set; }
+
     // Navigation properties
     public ConversationDataModel Conversation { get; set; } = null!;
 

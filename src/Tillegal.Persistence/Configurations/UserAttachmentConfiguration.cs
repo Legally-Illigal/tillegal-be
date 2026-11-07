@@ -52,6 +52,10 @@ public sealed class UserAttachmentConfiguration : IEntityTypeConfiguration<UserA
         builder.Property(a => a.TokenCount)
             .HasColumnType("integer");
 
+        builder.Property(a => a.FileHash)
+            .HasColumnType("character varying(64)")
+            .HasMaxLength(64);
+
         // Indexes
         builder.HasIndex(a => a.ConversationId)
             .HasDatabaseName("IX_UserAttachments_ConversationId");
@@ -61,6 +65,9 @@ public sealed class UserAttachmentConfiguration : IEntityTypeConfiguration<UserA
 
         builder.HasIndex(a => a.ProcessingStatus)
             .HasDatabaseName("IX_UserAttachments_ProcessingStatus");
+
+        builder.HasIndex(a => a.FileHash)
+            .HasDatabaseName("IX_UserAttachments_FileHash");
 
         // Foreign keys
         builder.HasOne(a => a.User)

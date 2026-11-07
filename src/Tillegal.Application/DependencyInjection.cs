@@ -21,6 +21,7 @@ public static class DependencyInjection
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IConversationService, ConversationService>();
         services.AddScoped<IConversationMessageService, ConversationMessageService>();
+        services.AddScoped<IUserAttachmentService, UserAttachmentService>();
         services.AddScoped<IAiEvaluationService, AiEvaluationService>();
         services.AddMediatR(configuration =>
         {
