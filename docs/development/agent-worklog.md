@@ -1036,3 +1036,25 @@ Use this file as a concise handoff record, not as a transcript. Append an entry 
   - `dotnet format tillegal-be.slnx --no-restore --verify-no-changes`: Succeeded (0 formatting violations).
 - **Next action:**
   - None required. SHA-256 duplicate detection and name disambiguation are fully operational.
+
+
+## 2026-11-07 — Remove GET /api/attachments Endpoint
+
+- **Status:** Completed and verified.
+- **Requirement:**
+  - Remove standalone endpoint `GET /api/attachments` as requested by user. Attachments are managed strictly within conversation context under `/api/conversations/{conversationId}/attachments`.
+- **Completed:**
+  - Removed `src/Tillegal.Api/Controllers/AttachmentsController.cs`.
+  - Removed unused query `GetUserAttachmentsQuery` and handler `GetUserAttachmentsQueryHandler`.
+  - Removed obsolete unit tests for `GetUserAttachmentsQuery` in `GetAttachmentQueriesHandlerTests.cs`.
+- **Changed paths:**
+  - `src/Tillegal.Api/Controllers/AttachmentsController.cs` (deleted)
+  - `src/Tillegal.Application/Features/Attachments/Queries/GetUserAttachments/GetUserAttachmentsQuery.cs` (deleted)
+  - `src/Tillegal.Application/Features/Attachments/Queries/GetUserAttachments/GetUserAttachmentsQueryHandler.cs` (deleted)
+  - `tests/Tillegal.Application.UnitTests/Features/Attachments/GetAttachmentQueriesHandlerTests.cs`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet test tillegal-be.slnx`: 284/284 passed (277 unit tests + 7 architecture tests).
+  - `dotnet format tillegal-be.slnx --no-restore --verify-no-changes`: Succeeded (0 formatting violations).
+- **Next action:**
+  - None required. Endpoint successfully removed.

@@ -9,7 +9,6 @@ using Tillegal.Application.Features.Attachments.Mappings;
 using Tillegal.Application.Features.Attachments.Queries.DownloadAttachment;
 using Tillegal.Application.Features.Attachments.Queries.GetAttachmentById;
 using Tillegal.Application.Features.Attachments.Queries.GetAttachmentsByConversationId;
-using Tillegal.Application.Features.Attachments.Queries.GetUserAttachments;
 using Tillegal.Domain.Entities;
 using Tillegal.Domain.Interfaces.Services;
 using Xunit;
@@ -231,47 +230,6 @@ public sealed class GetAttachmentQueriesHandlerTests
         result.Content.Should().Equal([10, 20, 30]);
         result.ContentType.Should().Be("application/pdf");
         result.FileName.Should().Be("doc.pdf");
-    }
-
-    [Fact]
-    public async Task GetUserAttachments_WhenUserIsAdmin_ShouldThrowForbiddenAccessException()
-    {
-        _currentUserService.UserId.Returns(Guid.NewGuid());
-        _currentUserService.Role.Returns("Admin");
-
-        var handler = new GetUserAttachmentsQueryHandler(
-            _currentUserService,
-            _attachmentService,
-            _mapper);
-
-        var query = new GetUserAttachmentsQuery();
-        var act = () => handler.Handle(query, CancellationToken.None);
-
-        var ex = await act.Should().ThrowAsync<ForbiddenAccessException>();
-        ex.WithMessage("*Admin is not allowed to access user files.*");
-    }
-
-    [Fact]
-    public async Task GetUserAttachments_WhenOwner_ShouldReturnAllUserAttachments()
-    {
-        var userId = Guid.NewGuid();
-        var attachment = UserAttachment.Create(Guid.NewGuid(), userId, "all.pdf", "path/all.pdf", 50, "application/pdf");
-
-        _currentUserService.UserId.Returns(userId);
-        _currentUserService.Role.Returns("User");
-        _attachmentService.GetAttachmentsByUserIdAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<UserAttachment> { attachment });
-
-        var handler = new GetUserAttachmentsQueryHandler(
-            _currentUserService,
-            _attachmentService,
-            _mapper);
-
-        var query = new GetUserAttachmentsQuery();
-        var result = await handler.Handle(query, CancellationToken.None);
-
-        result.Should().HaveCount(1);
-        result[0].FileName.Should().Be("all.pdf");
     }
 }
 
