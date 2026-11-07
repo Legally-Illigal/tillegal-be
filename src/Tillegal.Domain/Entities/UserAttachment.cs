@@ -1,24 +1,120 @@
 using Tillegal.Domain.Common;
+using Tillegal.Domain.Exceptions;
 
 namespace Tillegal.Domain.Entities;
 
 public sealed class UserAttachment : BaseEntity
 {
-    public Guid ConversationId { get; set; }
+    private UserAttachment() : base()
+    {
+    }
 
-    public Guid UserId { get; set; }
+    public UserAttachment(
+        Guid id,
+        Guid conversationId,
+        Guid userId,
+        string fileName,
+        string storagePath,
+        long fileSize,
+        string contentType,
+        string processingStatus,
+        int? tokenCount,
+        DateTimeOffset createdAt,
+        DateTimeOffset? updatedAt,
+        DateTimeOffset? deletedAt,
+        string? fileHash = null)
+        : base(id, createdAt, updatedAt, deletedAt)
+    {
+        ConversationId = conversationId;
+        UserId = userId;
+        FileName = fileName;
+        StoragePath = storagePath;
+        FileSize = fileSize;
+        ContentType = contentType;
+        ProcessingStatus = processingStatus;
+        TokenCount = tokenCount;
+        FileHash = fileHash;
+    }
 
-    public required string FileName { get; set; }
+    public static UserAttachment Create(
+        Guid conversationId,
+        Guid userId,
+        string fileName,
+        string storagePath,
+        long fileSize,
+        string contentType,
+        string? fileHash = null)
+    {
+        if (conversationId == Guid.Empty)
+        {
+            throw new DomainException("ConversationId cannot be empty.");
+        }
 
-    public required string StoragePath { get; set; }
+        if (userId == Guid.Empty)
+        {
+            throw new DomainException("UserId cannot be empty.");
+        }
 
-    public long FileSize { get; set; }
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            throw new DomainException("FileName cannot be empty.");
+        }
 
-    public required string ContentType { get; set; }
+        if (string.IsNullOrWhiteSpace(storagePath))
+        {
+            throw new DomainException("StoragePath cannot be empty.");
+        }
 
-    public string? ExtractedText { get; set; }
+        if (fileSize <= 0)
+        {
+            throw new DomainException("FileSize must be greater than zero.");
+        }
 
-    public string ProcessingStatus { get; set; } = "Pending";
+        if (string.IsNullOrWhiteSpace(contentType))
+        {
+            throw new DomainException("ContentType cannot be empty.");
+        }
 
-    public int? TokenCount { get; set; }
+        return new UserAttachment
+        {
+            ConversationId = conversationId,
+            UserId = userId,
+            FileName = fileName.Trim(),
+            StoragePath = storagePath.Trim(),
+            FileSize = fileSize,
+            ContentType = contentType.Trim(),
+            ProcessingStatus = "Pending",
+            FileHash = string.IsNullOrWhiteSpace(fileHash) ? null : fileHash.Trim().ToLowerInvariant()
+        };
+    }
+
+    public Guid ConversationId { get; private set; }
+
+    public Guid UserId { get; private set; }
+
+    public string FileName { get; private set; } = null!;
+
+    public string StoragePath { get; private set; } = null!;
+
+    public long FileSize { get; private set; }
+
+    public string ContentType { get; private set; } = null!;
+
+    public string ProcessingStatus { get; private set; } = "Pending";
+
+    public int? TokenCount { get; private set; }
+
+    public string? FileHash { get; private set; }
+
+    public void UpdateProcessingStatus(string status, int? tokenCount = null)
+    {
+        if (string.IsNullOrWhiteSpace(status))
+        {
+            throw new DomainException("ProcessingStatus cannot be empty.");
+        }
+
+        ProcessingStatus = status.Trim();
+        TokenCount = tokenCount;
+        MarkUpdated();
+    }
 }

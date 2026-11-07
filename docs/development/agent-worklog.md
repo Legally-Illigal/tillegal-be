@@ -844,3 +844,195 @@ Use this file as a concise handoff record, not as a transcript. Append an entry 
   - `dotnet format --no-restore --include ... --verify-no-changes`: Passed with 0 formatting changes.
 - **Next action:**
   - None required. Admin evaluation by ID query endpoint is fully operational.
+
+## 2026-11-07 — Implement User File Upload and Isolated Management
+
+- **Status:** Completed and verified.
+- **Context & Constraints:**
+  - Implemented file upload, retrieval, download, and deletion functionality for users.
+  - Strict privacy/security requirement: Admins must NOT be able to view, access, download, or manage user files.
+- **Completed:**
+  - **Domain:**
+    - Refactored `UserAttachment` into encapsulated DDD entity with `Create(...)` factory method, validation invariants, `UpdateProcessingStatus`, and `SoftDelete()`.
+    - Added `IUserAttachmentRepository` interface.
+    - Added `IUserAttachmentService` interface and `UserAttachmentService` implementation.
+  - **Persistence:**
+    - Implemented `UserAttachmentRepository` with mapping to/from `UserAttachmentDataModel`, filtering soft-deleted records, and registering in `DependencyInjection.cs`.
+  - **Application:**
+    - Models: `AttachmentDto`, `AttachmentDownloadDto`.
+    - Mapping: `AttachmentMappingConfig`.
+    - Commands:
+      - `UploadAttachmentCommand`: Uploads to `IStorageService` (Supabase Storage), creates `UserAttachment`, validates ownership and blocks `Admin` with `ForbiddenAccessException`.
+      - `DeleteAttachmentCommand`: Deletes from `IStorageService`, soft-deletes `UserAttachment`, validates ownership and blocks `Admin` with `ForbiddenAccessException`.
+    - Queries:
+      - `GetAttachmentsByConversationIdQuery`: Retrieves attachments in a conversation for the owner; blocks `Admin` with `ForbiddenAccessException`.
+      - `GetAttachmentByIdQuery`: Retrieves attachment metadata by id for the owner; blocks `Admin` with `ForbiddenAccessException`.
+      - `DownloadAttachmentQuery`: Streams downloaded bytes/content-type for the owner; blocks `Admin` with `ForbiddenAccessException`.
+      - `GetUserAttachmentsQuery`: Lists all attachments belonging to the authenticated user; blocks `Admin` with `ForbiddenAccessException`.
+    - Registered `IUserAttachmentService` in `DependencyInjection.cs`.
+  - **API:**
+    - Contracts: `AttachmentApiResponse`.
+    - Mapping: `AttachmentApiMappingConfig`.
+    - Endpoints in `ConversationsController`:
+      - `POST /api/conversations/{conversationId}/attachments` (multipart/form-data upload)
+      - `GET /api/conversations/{conversationId}/attachments` (list attachments in conversation)
+      - `GET /api/conversations/{conversationId}/attachments/{attachmentId}` (get metadata)
+      - `GET /api/conversations/{conversationId}/attachments/{attachmentId}/download` (download file)
+      - `DELETE /api/conversations/{conversationId}/attachments/{attachmentId}` (delete attachment)
+    - Controller `AttachmentsController`:
+      - `GET /api/attachments` (list all attachments of current user across conversations)
+    - Admin controllers (`AdminUsersController`, `AdminAiEvaluationsController`) expose zero user attachments or file operations.
+  - **Tests:**
+    - Added domain unit tests: `UserAttachmentTests.cs` (11 tests).
+    - Added command handler tests: `UploadAttachmentCommandHandlerTests.cs` (5 tests), `DeleteAttachmentCommandHandlerTests.cs` (7 tests).
+    - Added query handler tests: `GetAttachmentQueriesHandlerTests.cs` (10 tests).
+    - Added validator tests: `AttachmentCommandValidatorTests.cs` (12 tests).
+    - Added mapping tests: `AttachmentMappingTests.cs` (1 test).
+- **Changed paths:**
+  - `src/Tillegal.Domain/Entities/UserAttachment.cs`
+  - `src/Tillegal.Domain/Interfaces/Repositories/IUserAttachmentRepository.cs`
+  - `src/Tillegal.Domain/Interfaces/Services/IUserAttachmentService.cs`
+  - `src/Tillegal.Domain/Services/UserAttachmentService.cs`
+  - `src/Tillegal.Persistence/Repositories/UserAttachmentRepository.cs`
+  - `src/Tillegal.Persistence/DependencyInjection.cs`
+  - `src/Tillegal.Application/Features/Attachments/`
+  - `src/Tillegal.Application/DependencyInjection.cs`
+  - `src/Tillegal.Api/Contracts/Attachments/AttachmentContracts.cs`
+  - `src/Tillegal.Api/Mappings/AttachmentApiMappingConfig.cs`
+  - `src/Tillegal.Api/Controllers/ConversationsController.cs`
+  - `src/Tillegal.Api/Controllers/AttachmentsController.cs`
+  - `tests/Tillegal.Application.UnitTests/Domain/UserAttachmentTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Attachments/`
+  - `docs/development/backend-feature-backlog.md`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet build src/Tillegal.Domain/Tillegal.Domain.csproj`: Succeeded (0 errors).
+  - `dotnet build src/Tillegal.Persistence/Tillegal.Persistence.csproj`: Succeeded (0 errors).
+  - `dotnet build src/Tillegal.Application/Tillegal.Application.csproj`: Succeeded (0 errors).
+  - `dotnet build src/Tillegal.Api/Tillegal.Api.csproj`: Succeeded (0 errors).
+  - `dotnet build src/Tillegal.AppHost/Tillegal.AppHost.csproj`: Succeeded (0 errors).
+  - `dotnet test tests/Tillegal.Application.UnitTests/Tillegal.Application.UnitTests.csproj`: 270/270 passed.
+  - `dotnet test tests/Tillegal.ArchitectureTests/Tillegal.ArchitectureTests.csproj`: 7/7 passed.
+  - `dotnet format tillegal-be.slnx --no-restore --verify-no-changes`: Passed (0 formatting changes).
+- **Next action:**
+  - None required. File upload and user-isolated file management feature is complete and verified.
+
+## 2026-11-07 — Enhance File Deletion with Hard Delete for Pending Attachments
+
+- **Status:** Completed and verified.
+- **Context & Requirement:**
+  - When users accidentally upload a wrong file and delete it before submitting the question (`ProcessingStatus == "Pending"`), the file should be permanently purged (Hard Delete) from both storage and database to prevent orphan/junk records.
+  - If the attachment was already submitted/processed (`ProcessingStatus != "Pending"`), soft-delete in database is preserved while cloud storage file is deleted.
+- **Completed:**
+  - **Domain:**
+    - Updated `IUserAttachmentRepository` to declare `Task HardDeleteAsync(UserAttachment attachment, CancellationToken cancellationToken = default)`.
+    - Enhanced `UserAttachmentService.DeleteAttachmentAsync`: checks `attachment.ProcessingStatus`. If `"Pending"`, calls `HardDeleteAsync`; otherwise marks `SoftDelete()` and calls `DeleteAsync`.
+  - **Persistence:**
+    - Implemented `HardDeleteAsync` in `UserAttachmentRepository` removing the `UserAttachmentDataModel` entity from `AppDbContext.UserAttachments`.
+  - **Tests:**
+    - Added `UserAttachmentServiceTests.cs` (6 unit tests) verifying conditional hard vs soft delete behavior and delegation logic.
+- **Changed paths:**
+  - `src/Tillegal.Domain/Interfaces/Repositories/IUserAttachmentRepository.cs`
+  - `src/Tillegal.Domain/Services/UserAttachmentService.cs`
+  - `src/Tillegal.Persistence/Repositories/UserAttachmentRepository.cs`
+  - `tests/Tillegal.Application.UnitTests/Domain/UserAttachmentServiceTests.cs`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet build src/Tillegal.Domain/Tillegal.Domain.csproj`: Succeeded (0 errors).
+  - `dotnet build src/Tillegal.Persistence/Tillegal.Persistence.csproj`: Succeeded (0 errors).
+  - `dotnet test tests/Tillegal.Application.UnitTests/Tillegal.Application.UnitTests.csproj`: 276/276 passed (+6 tests).
+  - `dotnet test tests/Tillegal.ArchitectureTests/Tillegal.ArchitectureTests.csproj`: 7/7 passed.
+  - `dotnet format tillegal-be.slnx --no-restore --verify-no-changes`: Passed (0 formatting changes).
+- **Next action:**
+  - None required. Hard delete for pending attachments is fully operational.
+
+## 2026-11-07 — Enforce Maximum 5 Attachments Limit Per Conversation
+
+- **Status:** Completed and verified.
+- **Requirement:**
+  - Limit the number of attachments per conversation to a maximum of 5 files.
+- **Completed:**
+  - **Application:**
+    - Updated `UploadAttachmentCommandHandler`: Checks existing attachments via `IUserAttachmentService.GetAttachmentsByConversationIdAsync(conversationId)`.
+    - If count is >= 5, throws `DomainException("A conversation can have at most 5 attachments.")` before attempting storage upload, mapping directly to `400 Bad Request`.
+  - **Tests:**
+    - Added unit test `Handle_WhenConversationAlreadyHas5Attachments_ShouldThrowDomainException` in `UploadAttachmentCommandHandlerTests.cs`.
+- **Changed paths:**
+  - `src/Tillegal.Application/Features/Attachments/Commands/UploadAttachment/UploadAttachmentCommandHandler.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Attachments/UploadAttachmentCommandHandlerTests.cs`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet test tests/Tillegal.Application.UnitTests/Tillegal.Application.UnitTests.csproj`: 277/277 passed (+1 test).
+  - `dotnet test tests/Tillegal.ArchitectureTests/Tillegal.ArchitectureTests.csproj`: 7/7 passed.
+  - `dotnet format tillegal-be.slnx --no-restore --verify-no-changes`: Passed (0 formatting changes).
+- **Next action:**
+  - None required. 5 attachments limit is fully operational and verified.
+
+## 2026-11-07 — Add Duplicate File Check for Conversation Attachments
+
+- **Status:** Completed and verified.
+- **Requirement:**
+  - Prevent duplicate file uploads within the same conversation (case-insensitive file name matching against active attachments).
+- **Completed:**
+  - **Application:**
+    - Updated `UploadAttachmentCommandHandler`: Checks whether an active attachment with the same sanitized file name already exists in the conversation via `existingAttachments.Any(a => string.Equals(a.FileName, sanitizedFileName, StringComparison.OrdinalIgnoreCase))`.
+    - If duplicate, throws `DomainException($"A file named '{sanitizedFileName}' already exists in this conversation.")` prior to storage upload (returning `400 Bad Request`).
+  - **Tests:**
+    - Added unit test `Handle_WhenFileWithSameNameAlreadyExistsInConversation_ShouldThrowDomainException` in `UploadAttachmentCommandHandlerTests.cs`.
+- **Changed paths:**
+  - `src/Tillegal.Application/Features/Attachments/Commands/UploadAttachment/UploadAttachmentCommandHandler.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Attachments/UploadAttachmentCommandHandlerTests.cs`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet test tests/Tillegal.Application.UnitTests/Tillegal.Application.UnitTests.csproj`: 278/278 passed (+1 test).
+  - `dotnet test tests/Tillegal.ArchitectureTests/Tillegal.ArchitectureTests.csproj`: 7/7 passed.
+  - `dotnet format tillegal-be.slnx --no-restore --verify-no-changes`: Passed (0 formatting changes).
+- **Next action:**
+  - None required. Duplicate file prevention is fully operational and verified.
+
+
+## 2026-11-07 — Add SHA-256 Content Hash Duplicate Check and File Name Auto-Disambiguation
+
+- **Status:** Completed and verified.
+- **Requirement:**
+  - Prevent uploading duplicate file content within the same conversation using SHA-256 hashing (`FileHash`), even if the file was renamed.
+  - If content is distinct but file names collide (e.g. generic names like `image.png`), auto-disambiguate display names (`image (2).png`).
+  - Max 5 files per conversation enforced.
+- **Completed:**
+  - **Domain:**
+    - Added `FileHash` property (`string?`, hex string) to `UserAttachment` entity with factory `Create(...)` validation and constructor mapping.
+    - Added `fileHash` parameter to `IUserAttachmentService.CreateAttachmentAsync` and `UserAttachmentService.CreateAttachmentAsync`.
+  - **Persistence:**
+    - Added `FileHash` to `UserAttachmentDataModel`.
+    - Configured `FileHash` (`varchar(64)`) and index `IX_UserAttachments_FileHash` in `UserAttachmentConfiguration`.
+    - Generated EF Core migration `20261107154004_AddFileHashToUserAttachment` and applied to PostgreSQL via `dotnet ef database update`.
+    - Updated `UserAttachmentRepository` to map `FileHash`.
+  - **Application & API:**
+    - Added `FileHash` to `AttachmentDto` and `AttachmentResponse`.
+    - Updated `UploadAttachmentCommandHandler`:
+      - Computes SHA-256 hash using `SHA256.HashDataAsync`.
+      - Checks if any existing attachment in the conversation has the same `FileHash`. If so, throws `DomainException("A file with identical content has already been uploaded to this conversation.")`.
+      - If content differs but file name matches an existing file, auto-disambiguates using standard numbering (`file (2).pdf`).
+  - **Tests:**
+    - Updated `UserAttachmentServiceTests.cs` to test `CreateAttachmentAsync` with `FileHash`.
+    - Updated `UploadAttachmentCommandHandlerTests.cs` to test duplicate content rejection and name disambiguation.
+- **Changed paths:**
+  - `src/Tillegal.Domain/Entities/UserAttachment.cs`
+  - `src/Tillegal.Domain/Interfaces/Services/IUserAttachmentService.cs`
+  - `src/Tillegal.Domain/Services/UserAttachmentService.cs`
+  - `src/Tillegal.Persistence/DataModels/UserAttachmentDataModel.cs`
+  - `src/Tillegal.Persistence/Configurations/UserAttachmentConfiguration.cs`
+  - `src/Tillegal.Persistence/Repositories/UserAttachmentRepository.cs`
+  - `src/Tillegal.Persistence/Migrations/20261107154004_AddFileHashToUserAttachment.cs`
+  - `src/Tillegal.Persistence/Migrations/AppDbContextModelSnapshot.cs`
+  - `src/Tillegal.Application/Features/Attachments/Models/AttachmentDto.cs`
+  - `src/Tillegal.Application/Features/Attachments/Commands/UploadAttachment/UploadAttachmentCommandHandler.cs`
+  - `src/Tillegal.Api/Contracts/Attachments/AttachmentContracts.cs`
+  - `tests/Tillegal.Application.UnitTests/Domain/UserAttachmentServiceTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Attachments/UploadAttachmentCommandHandlerTests.cs`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet test tillegal-be.slnx`: 286/286 passed (279 unit tests + 7 architecture tests).
+  - `dotnet format tillegal-be.slnx --no-restore --verify-no-changes`: Succeeded (0 formatting violations).
+- **Next action:**
+  - None required. SHA-256 duplicate detection and name disambiguation are fully operational.

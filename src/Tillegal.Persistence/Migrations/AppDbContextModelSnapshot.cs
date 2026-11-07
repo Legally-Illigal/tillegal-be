@@ -250,6 +250,10 @@ namespace Tillegal.Persistence.Migrations
                     b.Property<DateTimeOffset?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("FileHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<string>("FileName")
                         .IsRequired()
                         .HasColumnType("text");
@@ -280,6 +284,9 @@ namespace Tillegal.Persistence.Migrations
 
                     b.HasIndex("ConversationId")
                         .HasDatabaseName("IX_UserAttachments_ConversationId");
+
+                    b.HasIndex("FileHash")
+                        .HasDatabaseName("IX_UserAttachments_FileHash");
 
                     b.HasIndex("ProcessingStatus")
                         .HasDatabaseName("IX_UserAttachments_ProcessingStatus");
