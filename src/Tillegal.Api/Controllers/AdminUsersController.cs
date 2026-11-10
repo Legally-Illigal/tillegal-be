@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Tillegal.Api.Contracts.Admin;
+using Tillegal.Application.Features.Admin.Users.Commands.GrantLawyerRole;
 using Tillegal.Application.Features.Admin.Users.Commands.UpdateUserStatus;
 using Tillegal.Application.Features.Admin.Users.Queries.GetUserById;
 using Tillegal.Application.Features.Admin.Users.Queries.GetUsers;
@@ -60,6 +61,23 @@ public sealed class AdminUsersController(ISender mediator, IMapper mapper)
         CancellationToken cancellationToken)
     {
         var command = new UpdateUserStatusCommand(id, request.IsActive);
+        var result = await Mediator.Send(command, cancellationToken);
+        var response = Mapper.Map<AdminUserApiResponse>(result);
+
+        return Ok(response);
+    }
+
+    [HttpPost("{id:guid}/grant-lawyer")]
+    [ProducesResponseType(typeof(AdminUserApiResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GrantLawyerRole(
+        [FromRoute] Guid id,
+        CancellationToken cancellationToken)
+    {
+        var command = new GrantLawyerRoleCommand(id);
         var result = await Mediator.Send(command, cancellationToken);
         var response = Mapper.Map<AdminUserApiResponse>(result);
 
