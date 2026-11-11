@@ -1145,3 +1145,21 @@ Use this file as a concise handoff record, not as a transcript. Append an entry 
   - `dotnet test tests/Tillegal.ArchitectureTests/Tillegal.ArchitectureTests.csproj`: 7/7 tests passed.
 - **Next action:**
   - None required. Feature is complete and verified.
+
+## 2026-11-11 — Update Admin Grant Lawyer Role HTTP Method to PUT
+
+- **Status:** Completed and verified.
+- **Requirement:**
+  - Update the admin endpoint for granting the lawyer role to a user from `POST` to `PUT` (`PUT /api/admin/users/{id:guid}/grant-lawyer`).
+- **Completed:**
+  - **API Layer:**
+    - Updated `AdminUsersController.GrantLawyerRole` HTTP attribute from `[HttpPost("{id:guid}/grant-lawyer")]` to `[HttpPut("{id:guid}/grant-lawyer")]`.
+- **Changed paths:**
+  - `src/Tillegal.Api/Controllers/AdminUsersController.cs`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet test tillegal-be.slnx`: 304/304 passed (297 unit tests + 7 architecture tests).
+  - `dotnet format tillegal-be.slnx --no-restore --verify-no-changes`: Succeeded (0 formatting violations).
+- **Next action:**
+  - Commit and push changes to remote repository.
+
