@@ -126,13 +126,10 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
         if (dataModel is null)
             return;
 
-<<<<<<< Updated upstream
-=======
         dataModel.RoleId = user.RoleId;
         dataModel.FullName = user.FullName;
         dataModel.PhoneNumber = user.PhoneNumber;
         dataModel.GoogleSubject = user.GoogleSubject;
->>>>>>> Stashed changes
         dataModel.DeletedAt = user.IsActive ? null : DateTimeOffset.UtcNow;
     }
 
