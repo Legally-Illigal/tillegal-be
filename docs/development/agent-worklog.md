@@ -1058,8 +1058,6 @@ Use this file as a concise handoff record, not as a transcript. Append an entry 
   - `dotnet format tillegal-be.slnx --no-restore --verify-no-changes`: Succeeded (0 formatting violations).
 - **Next action:**
   - None required. Endpoint successfully removed.
-<<<<<<< Updated upstream
-=======
 
 
 ## 2026-11-10 — Add Admin Grant Lawyer Role Feature
@@ -1147,4 +1145,4 @@ Use this file as a concise handoff record, not as a transcript. Append an entry 
   - `dotnet test tests/Tillegal.ArchitectureTests/Tillegal.ArchitectureTests.csproj`: 7/7 tests passed.
 - **Next action:**
   - None required. Feature is complete and verified.
->>>>>>> Stashed changes
+

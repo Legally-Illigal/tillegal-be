@@ -55,10 +55,22 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
 
     public async Task<Role?> GetDefaultRoleAsync(string roleName = "User", CancellationToken cancellationToken = default)
     {
+        return await GetRoleByNameAsync(roleName, cancellationToken);
+    }
+
+    public async Task<Role?> GetRoleByNameAsync(string roleName, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(roleName);
+
         var normalizedRoleName = roleName.Trim().ToLowerInvariant();
+        var isLawyerQuery = normalizedRoleName is "lawyer" or "lawer";
+
         var dataModel = await dbContext.Roles
             .AsNoTracking()
-            .FirstOrDefaultAsync(r => r.Name != null && r.Name.ToLower() == normalizedRoleName, cancellationToken);
+            .FirstOrDefaultAsync(r => r.Name != null &&
+                (r.Name.ToLower() == normalizedRoleName ||
+                 (isLawyerQuery && (r.Name.ToLower() == "lawyer" || r.Name.ToLower() == "lawer"))),
+                cancellationToken);
 
         return dataModel is null ? null : new Role(dataModel.Id, dataModel.Name);
     }
@@ -126,13 +138,10 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
         if (dataModel is null)
             return;
 
-<<<<<<< Updated upstream
-=======
         dataModel.RoleId = user.RoleId;
         dataModel.FullName = user.FullName;
         dataModel.PhoneNumber = user.PhoneNumber;
         dataModel.GoogleSubject = user.GoogleSubject;
->>>>>>> Stashed changes
         dataModel.DeletedAt = user.IsActive ? null : DateTimeOffset.UtcNow;
     }
 
