@@ -38,6 +38,7 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
 
         var dataModel = await dbContext.Users
             .AsNoTracking()
+            .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.GoogleSubject == googleSubject, cancellationToken);
 
         return dataModel is null ? null : MapToEntity(dataModel);
@@ -125,6 +126,13 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
         if (dataModel is null)
             return;
 
+<<<<<<< Updated upstream
+=======
+        dataModel.RoleId = user.RoleId;
+        dataModel.FullName = user.FullName;
+        dataModel.PhoneNumber = user.PhoneNumber;
+        dataModel.GoogleSubject = user.GoogleSubject;
+>>>>>>> Stashed changes
         dataModel.DeletedAt = user.IsActive ? null : DateTimeOffset.UtcNow;
     }
 

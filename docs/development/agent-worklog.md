@@ -1058,3 +1058,93 @@ Use this file as a concise handoff record, not as a transcript. Append an entry 
   - `dotnet format tillegal-be.slnx --no-restore --verify-no-changes`: Succeeded (0 formatting violations).
 - **Next action:**
   - None required. Endpoint successfully removed.
+<<<<<<< Updated upstream
+=======
+
+
+## 2026-11-10 — Add Admin Grant Lawyer Role Feature
+
+- **Status:** Completed and verified.
+- **Requirement:**
+  - Provide an administrative feature allowing administrators to grant the lawyer role to standard users.
+- **Completed:**
+  - **Domain & Persistence:**
+    - Added `GetRoleByNameAsync(string roleName, CancellationToken cancellationToken = default)` to `IUserRepository` and `UserRepository` with case-insensitive matching handling both "Lawyer" and legacy seed name "Lawer".
+    - Updated `UserRepository.UpdateAsync` to persist `RoleId`, `FullName`, and `PhoneNumber` changes in addition to `DeletedAt` (status).
+    - Updated `AdminUserMappingConfig` to normalize role name `"Lawer"` to `"Lawyer"` in `UserDto`.
+  - **Application Layer:**
+    - Created `GrantLawyerRoleCommand` (`Guid UserId`).
+    - Created `GrantLawyerRoleCommandValidator` ensuring `UserId` is not empty.
+    - Created `GrantLawyerRoleCommandHandler` enforcing business rules:
+      - Authenticated user check (`UnauthorizedException`).
+      - Admin role check (`ForbiddenAccessException`).
+      - Prevent administrators from modifying their own role (`DomainException`).
+      - Target user existence check (`NotFoundException`).
+      - Protection preventing administrators from having their role changed (`DomainException`).
+      - Guard preventing users who already have the Lawyer role from being granted again (`DomainException`).
+      - Guard preventing inactive or locked users from receiving lawyer privileges (`DomainException`).
+      - Resolution of lawyer role and persistence of updated `RoleId` and `Role`.
+  - **API Layer:**
+    - Added endpoint `POST /api/admin/users/{id:guid}/grant-lawyer` to `AdminUsersController` returning updated `AdminUserApiResponse`.
+  - **Tests:**
+    - Added `GrantLawyerRoleCommandHandlerTests` (9 test cases covering all edge cases, exceptions, and happy path).
+    - Added `GrantLawyerRoleCommandValidatorTests` (2 test cases).
+    - Added `AdminUserMappingTests` (2 test cases verifying "Lawer" -> "Lawyer" normalization and standard role mapping).
+- **Changed paths:**
+  - `src/Tillegal.Domain/Interfaces/Repositories/IUserRepository.cs`
+  - `src/Tillegal.Persistence/Repositories/UserRepository.cs`
+  - `src/Tillegal.Application/Features/Admin/Users/Mappings/AdminUserMappingConfig.cs`
+  - `src/Tillegal.Application/Features/Admin/Users/Commands/GrantLawyerRole/GrantLawyerRoleCommand.cs`
+  - `src/Tillegal.Application/Features/Admin/Users/Commands/GrantLawyerRole/GrantLawyerRoleCommandValidator.cs`
+  - `src/Tillegal.Application/Features/Admin/Users/Commands/GrantLawyerRole/GrantLawyerRoleCommandHandler.cs`
+  - `src/Tillegal.Api/Controllers/AdminUsersController.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Admin/GrantLawyerRoleCommandHandlerTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Admin/GrantLawyerRoleCommandValidatorTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Admin/AdminUserMappingTests.cs`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet test tillegal-be.slnx`: 298/298 passed (291 unit tests + 7 architecture tests).
+  - `dotnet format tillegal-be.slnx --no-restore --verify-no-changes`: Succeeded (0 formatting violations).
+- **Next action:**
+  - None required. Feature is complete and verified.
+
+## 2026-11-11 — Support Direct Google Sign-In Without Mandatory Separate Registration Step
+
+- **Status:** Completed and verified.
+- **Requirement:**
+  - Modify Google login (`POST /api/auth/login/google`) so that if a user authenticates with Google, they can log in directly without requiring a separate manual registration step.
+- **Completed:**
+  - **Application Layer (`LoginWithGoogleCommandHandler`):**
+    - Updated `LoginWithGoogleCommandHandler` to check if an account with the Google `sub` exists.
+    - If not found, checks if an account exists with the verified Google email:
+      - If found with no Google subject linked, automatically links `user.GoogleSubject` and persists the update via `IUnitOfWork`.
+      - If found with a different Google subject, rejects with `DomainException` to prevent account hijacking.
+    - If no account exists with either Google subject or email, automatically creates a new passwordless user with default role `"User"`, verified email, and full name (or email prefix fallback), persisting the entity via `IUnitOfWork`.
+    - Generates Tillegal JWT and returns `GoogleLoginResult` for all successful flows.
+  - **Persistence Layer (`UserRepository`):**
+    - Updated `GetByGoogleSubjectAsync` to include `Role` navigation property (`.Include(u => u.Role)`).
+    - Updated `UpdateAsync` to persist `dataModel.GoogleSubject = user.GoogleSubject`.
+  - **Documentation:**
+    - Updated `docs/api/authentication.md` to document immediate Google login, automatic subject linking for existing verified emails, and automatic account registration without a separate registration step.
+  - **Tests:**
+    - Updated and expanded `LoginWithGoogleCommandHandlerTests` with 8 comprehensive test cases covering:
+      - Existing Google subject login.
+      - Automatic user registration when account does not exist.
+      - Automatic Google subject linking when user exists by email without subject.
+      - Conflict rejection when email is associated with a different Google subject.
+      - Unverified email rejection.
+      - Missing subject rejection.
+      - Missing email rejection.
+      - Fallback to email username prefix when full name is empty.
+- **Changed paths:**
+  - `src/Tillegal.Application/Features/Auth/Commands/LoginWithGoogle/LoginWithGoogleCommandHandler.cs`
+  - `src/Tillegal.Persistence/Repositories/UserRepository.cs`
+  - `docs/api/authentication.md`
+  - `tests/Tillegal.Application.UnitTests/Features/Auth/LoginWithGoogleCommandHandlerTests.cs`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet test tests/Tillegal.Application.UnitTests/Tillegal.Application.UnitTests.csproj`: 297/297 tests passed.
+  - `dotnet test tests/Tillegal.ArchitectureTests/Tillegal.ArchitectureTests.csproj`: 7/7 tests passed.
+- **Next action:**
+  - None required. Feature is complete and verified.
+>>>>>>> Stashed changes
