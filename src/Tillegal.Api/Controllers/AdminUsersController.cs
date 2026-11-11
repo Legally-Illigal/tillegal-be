@@ -67,7 +67,7 @@ public sealed class AdminUsersController(ISender mediator, IMapper mapper)
         return Ok(response);
     }
 
-    [HttpPost("{id:guid}/grant-lawyer")]
+    [HttpPut("{id:guid}/grant-lawyer")]
     [ProducesResponseType(typeof(AdminUserApiResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
