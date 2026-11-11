@@ -9,7 +9,9 @@ public sealed class AdminUserMappingConfig : IRegister
     public void Register(TypeAdapterConfig config)
     {
         config.NewConfig<User, UserDto>()
-            .Map(dest => dest.RoleName, src => src.Role != null ? src.Role.Name : null)
+            .Map(dest => dest.RoleName, src => src.Role != null
+                ? (string.Equals(src.Role.Name, "Lawer", StringComparison.OrdinalIgnoreCase) ? "Lawyer" : src.Role.Name)
+                : null)
             .Map(dest => dest.IsActive, src => src.IsActive);
     }
 }
