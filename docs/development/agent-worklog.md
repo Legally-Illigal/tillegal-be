@@ -844,8 +844,6 @@ Use this file as a concise handoff record, not as a transcript. Append an entry 
   - `dotnet format --no-restore --include ... --verify-no-changes`: Passed with 0 formatting changes.
 - **Next action:**
   - None required. Admin evaluation by ID query endpoint is fully operational.
-<<<<<<< Updated upstream
-=======
 
 ## 2026-11-07 — Implement User File Upload and Isolated Management
 
@@ -1107,4 +1105,44 @@ Use this file as a concise handoff record, not as a transcript. Append an entry 
   - `dotnet format tillegal-be.slnx --no-restore --verify-no-changes`: Succeeded (0 formatting violations).
 - **Next action:**
   - None required. Feature is complete and verified.
->>>>>>> Stashed changes
+
+## 2026-11-11 — Support Direct Google Sign-In Without Mandatory Separate Registration Step
+
+- **Status:** Completed and verified.
+- **Requirement:**
+  - Modify Google login (`POST /api/auth/login/google`) so that if a user authenticates with Google, they can log in directly without requiring a separate manual registration step.
+- **Completed:**
+  - **Application Layer (`LoginWithGoogleCommandHandler`):**
+    - Updated `LoginWithGoogleCommandHandler` to check if an account with the Google `sub` exists.
+    - If not found, checks if an account exists with the verified Google email:
+      - If found with no Google subject linked, automatically links `user.GoogleSubject` and persists the update via `IUnitOfWork`.
+      - If found with a different Google subject, rejects with `DomainException` to prevent account hijacking.
+    - If no account exists with either Google subject or email, automatically creates a new passwordless user with default role `"User"`, verified email, and full name (or email prefix fallback), persisting the entity via `IUnitOfWork`.
+    - Generates Tillegal JWT and returns `GoogleLoginResult` for all successful flows.
+  - **Persistence Layer (`UserRepository`):**
+    - Updated `GetByGoogleSubjectAsync` to include `Role` navigation property (`.Include(u => u.Role)`).
+    - Updated `UpdateAsync` to persist `dataModel.GoogleSubject = user.GoogleSubject`.
+  - **Documentation:**
+    - Updated `docs/api/authentication.md` to document immediate Google login, automatic subject linking for existing verified emails, and automatic account registration without a separate registration step.
+  - **Tests:**
+    - Updated and expanded `LoginWithGoogleCommandHandlerTests` with 8 comprehensive test cases covering:
+      - Existing Google subject login.
+      - Automatic user registration when account does not exist.
+      - Automatic Google subject linking when user exists by email without subject.
+      - Conflict rejection when email is associated with a different Google subject.
+      - Unverified email rejection.
+      - Missing subject rejection.
+      - Missing email rejection.
+      - Fallback to email username prefix when full name is empty.
+- **Changed paths:**
+  - `src/Tillegal.Application/Features/Auth/Commands/LoginWithGoogle/LoginWithGoogleCommandHandler.cs`
+  - `src/Tillegal.Persistence/Repositories/UserRepository.cs`
+  - `docs/api/authentication.md`
+  - `tests/Tillegal.Application.UnitTests/Features/Auth/LoginWithGoogleCommandHandlerTests.cs`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet test tests/Tillegal.Application.UnitTests/Tillegal.Application.UnitTests.csproj`: 297/297 tests passed.
+  - `dotnet test tests/Tillegal.ArchitectureTests/Tillegal.ArchitectureTests.csproj`: 7/7 tests passed.
+- **Next action:**
+  - None required. Feature is complete and verified.
+
