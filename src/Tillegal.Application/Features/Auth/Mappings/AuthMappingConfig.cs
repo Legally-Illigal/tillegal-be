@@ -3,6 +3,7 @@ using Tillegal.Application.Features.Auth.Commands.Login;
 using Tillegal.Application.Features.Auth.Commands.LoginWithGoogle;
 using Tillegal.Application.Features.Auth.Commands.RegisterWithGoogle;
 using Tillegal.Application.Features.Auth.Commands.VerifyRegistration;
+using Tillegal.Application.Features.Auth.Queries.GetCurrentUser;
 using Tillegal.Domain.Entities;
 
 namespace Tillegal.Application.Features.Auth.Mappings;
@@ -39,5 +40,12 @@ public sealed class AuthMappingConfig : IRegister
             .Map(dest => dest.FullName, src => src.FullName)
             .Map(dest => dest.Message, _ => "Account registration and verification completed successfully.");
 
+        config.NewConfig<User, CurrentUserDto>()
+            .Map(dest => dest.Id, src => src.Id)
+            .Map(dest => dest.FullName, src => src.FullName)
+            .Map(dest => dest.Email, src => src.Email)
+            .Map(dest => dest.PhoneNumber, src => src.PhoneNumber)
+            .Map(dest => dest.Role, src => src.Role != null ? src.Role.Name : null)
+            .Map(dest => dest.IsActive, src => src.IsActive);
     }
 }

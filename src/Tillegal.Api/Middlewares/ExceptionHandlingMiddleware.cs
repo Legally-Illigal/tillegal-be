@@ -112,6 +112,11 @@ public sealed class ExceptionHandlingMiddleware(
             }
         };
 
+        if (exception is DomainException domainEx && !string.IsNullOrWhiteSpace(domainEx.ErrorCode))
+        {
+            problem.Extensions["code"] = domainEx.ErrorCode;
+        }
+
         problem.Instance = context.Request.Path;
         problem.Extensions["traceId"] = context.TraceIdentifier;
         return problem;

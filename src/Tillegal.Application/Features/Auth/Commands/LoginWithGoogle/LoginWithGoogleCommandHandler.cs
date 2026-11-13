@@ -1,5 +1,6 @@
 using MapsterMapper;
 using MediatR;
+using Tillegal.Application.Common.Exceptions;
 using Tillegal.Application.Common.Interfaces;
 using Tillegal.Application.Features.Auth.Mappings;
 using Tillegal.Domain.Entities;
@@ -73,6 +74,11 @@ public sealed class LoginWithGoogleCommandHandler(
 
                 await unitOfWork.SaveChangesAsync(cancellationToken);
             }
+        }
+
+        if (!user.IsActive)
+        {
+            throw new UnauthorizedException("User account has been deactivated or does not exist.");
         }
 
         var userEmail = !string.IsNullOrWhiteSpace(user.Email) ? user.Email : email;

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
 using MapsterMapper;
@@ -7,6 +8,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -15,6 +17,7 @@ using Tillegal.Api.OpenAPI;
 using Tillegal.Api.Options;
 using Tillegal.Api.Services;
 using Tillegal.Application.Common.Interfaces;
+using Tillegal.Domain.Interfaces.Repositories;
 
 namespace Tillegal.Api;
 
@@ -91,6 +94,7 @@ public static class DependencyInjection
         services.AddEndpointsApiExplorer();
         services.AddSwaggerGen();
         services.ConfigureOptions<SwaggerConfigureOptions>();
+        services.AddMemoryCache();
 
         services.AddOptions<JwtOptions>()
             .Bind(configuration.GetSection(JwtOptions.SectionName));
@@ -133,6 +137,48 @@ public static class DependencyInjection
                     }
 
                     return Task.CompletedTask;
+                },
+                OnTokenValidated = async context =>
+                {
+                    var userIdStr = context.Principal?.FindFirstValue(ClaimTypes.NameIdentifier)
+                        ?? context.Principal?.FindFirstValue("sub");
+
+                    if (!Guid.TryParse(userIdStr, out var userId))
+                    {
+                        context.Fail("Invalid user identifier in token.");
+                        return;
+                    }
+
+                    var memoryCache = context.HttpContext.RequestServices.GetService<IMemoryCache>();
+                    var cacheKey = $"user_active_status_{userId}";
+
+                    if (memoryCache is not null && memoryCache.TryGetValue<bool>(cacheKey, out var isCachedActive))
+                    {
+                        if (!isCachedActive)
+                        {
+                            context.Fail("User account has been deactivated or does not exist.");
+                        }
+                        return;
+                    }
+
+                    try
+                    {
+                        var userRepository = context.HttpContext.RequestServices.GetRequiredService<IUserRepository>();
+                        var user = await userRepository.GetByIdAsync(userId, context.HttpContext.RequestAborted);
+
+                        if (user is null || !user.IsActive)
+                        {
+                            memoryCache?.Set(cacheKey, false, TimeSpan.FromSeconds(30));
+                            context.Fail("User account has been deactivated or does not exist.");
+                            return;
+                        }
+
+                        memoryCache?.Set(cacheKey, true, TimeSpan.FromSeconds(60));
+                    }
+                    catch (Exception)
+                    {
+                        context.Fail("Failed to verify user account status.");
+                    }
                 }
             };
         });

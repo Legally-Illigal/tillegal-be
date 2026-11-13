@@ -5,6 +5,7 @@ using MapsterMapper;
 using MediatR;
 using Tillegal.Application.Common.Exceptions;
 using Tillegal.Application.Common.Interfaces;
+using Tillegal.Application.Features.Attachments.Common;
 using Tillegal.Application.Features.Attachments.Models;
 using Tillegal.Domain.Exceptions;
 using Tillegal.Domain.Interfaces.Services;
@@ -54,7 +55,7 @@ public sealed class UploadAttachmentCommandHandler(
 
         if (existingAttachments.Count >= MaxAttachmentsPerConversation)
         {
-            throw new DomainException($"A conversation can have at most {MaxAttachmentsPerConversation} attachments.");
+            throw new DomainException($"A conversation can have at most {MaxAttachmentsPerConversation} attachments.", "ATTACHMENT_LIMIT_EXCEEDED");
         }
 
         Stream streamToUpload = request.Content;
@@ -69,6 +70,12 @@ public sealed class UploadAttachmentCommandHandler(
 
         try
         {
+            var extension = Path.GetExtension(request.FileName);
+            if (!FileSignatureValidator.IsValidSignature(streamToUpload, extension))
+            {
+                throw new DomainException("File signature does not match the file extension or file content is invalid.", "INVALID_FILE_SIGNATURE");
+            }
+
             if (streamToUpload.CanSeek)
             {
                 streamToUpload.Position = 0;
@@ -87,7 +94,7 @@ public sealed class UploadAttachmentCommandHandler(
 
             if (isDuplicateContent)
             {
-                throw new DomainException("This file has already been uploaded to this conversation.");
+                throw new DomainException("This file has already been uploaded to this conversation.", "DUPLICATE_FILE");
             }
 
             var rawFileName = Path.GetFileName(request.FileName);

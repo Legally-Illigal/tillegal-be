@@ -105,6 +105,36 @@ public class LoginCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenUserIsDeactivated_ShouldThrowUnauthorizedException()
+    {
+        // Arrange
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = "deactivated@example.com",
+            FullName = "Deactivated User",
+            PasswordHash = "valid_hash",
+            IsActive = false
+        };
+
+        var command = new LoginCommand("deactivated@example.com", "CorrectPassword");
+        _userRepository.GetByEmailAsync("deactivated@example.com", Arg.Any<CancellationToken>())
+            .Returns(user);
+
+        _passwordHashingService.VerifyPassword("valid_hash", "CorrectPassword")
+            .Returns(true);
+
+        // Act
+        Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<UnauthorizedException>()
+            .WithMessage("User account has been deactivated or does not exist.");
+
+        _jwtTokenGenerator.DidNotReceiveWithAnyArgs().GenerateToken(default!, default);
+    }
+
+    [Fact]
     public async Task Handle_WhenCredentialsAreValid_ShouldReturnLoginResultWithTokenAndUser()
     {
         // Arrange
