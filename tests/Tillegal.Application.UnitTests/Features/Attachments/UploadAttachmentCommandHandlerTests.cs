@@ -301,7 +301,67 @@ public sealed class UploadAttachmentCommandHandlerTests
         // Assert
         result.Should().NotBeNull();
         result.FileName.Should().Be("image (2).png");
-        await _storageService.Received(1).UploadAsync(Arg.Any<string>(), Arg.Any<Stream>(), "image/png", Arg.Any<CancellationToken>());
+        await _storageService.Received(1).UploadAsync(
+            Arg.Is<string>(s => s.StartsWith($"attachments/{userId}/") && s.EndsWith("/image-2.png")),
+            Arg.Any<Stream>(),
+            "image/png",
+            Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("Ảnh1.png", "image/png", "/Anh1.png")]
+    [InlineData("Đề cương hợp đồng (nháp).pdf", "application/pdf", "/De-cuong-hop-dong-nhap.pdf")]
+    public async Task Handle_WhenFileNameHasVietnameseOrSpecialCharacters_ShouldKeepDisplayNameAndUseAsciiStoragePath(
+        string fileName,
+        string contentType,
+        string expectedStorageSuffix)
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var conversationId = Guid.NewGuid();
+        var conversation = Conversation.Create(userId, "Hội thoại của tôi");
+
+        _currentUserService.UserId.Returns(userId);
+        _currentUserService.Role.Returns("User");
+        _conversationService.GetConversationByIdAsync(conversationId, Arg.Any<CancellationToken>())
+            .Returns(conversation);
+
+        var fileContent = new byte[] { 10, 20, 30 };
+        var createdAttachment = UserAttachment.Create(
+            conversationId,
+            userId,
+            fileName,
+            $"attachments/{userId}/12345{expectedStorageSuffix}",
+            fileContent.Length,
+            contentType);
+
+        _attachmentService.CreateAttachmentAsync(
+            conversationId,
+            userId,
+            fileName,
+            Arg.Is<string>(s => s.StartsWith($"attachments/{userId}/") && s.EndsWith(expectedStorageSuffix)),
+            fileContent.Length,
+            contentType,
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>())
+            .Returns(createdAttachment);
+
+        using var stream = new MemoryStream(fileContent);
+        var command = new UploadAttachmentCommand(conversationId, fileName, contentType, fileContent.Length, stream);
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.FileName.Should().Be(fileName);
+        await _storageService.Received(1).UploadAsync(
+            Arg.Is<string>(s => s.StartsWith($"attachments/{userId}/")
+                && s.EndsWith(expectedStorageSuffix)
+                && s.All(c => c < 128)),
+            stream,
+            contentType,
+            Arg.Any<CancellationToken>());
     }
 }
 

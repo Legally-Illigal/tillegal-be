@@ -1163,3 +1163,30 @@ Use this file as a concise handoff record, not as a transcript. Append an entry 
 - **Next action:**
   - Commit and push changes to remote repository.
 
+## 2026-11-13 — Fix Supabase Storage Upload Failure for Vietnamese and Non-ASCII File Names
+
+- **Status:** Completed and verified.
+- **Requirement:**
+  - Resolve upload failure returning HTTP 500 (`Response status code does not indicate success: 400 (Bad Request)`) when users upload files containing Vietnamese accented characters (e.g. `Ảnh1.png`), spaces, parentheses, or special characters.
+- **Completed:**
+  - **Application Layer (`UploadAttachmentCommandHandler`):**
+    - Maintained original file name with full Unicode/Vietnamese support (`finalFileName`) in `UserAttachment.FileName` and DB for display and download.
+    - Implemented `BuildSafeStorageFileName` and `SanitizeAsciiSegment` converting Vietnamese diacritics into ASCII equivalents (`Ảnh1` -> `Anh1`, `đ` -> `d`), replacing spaces/symbols with hyphens, and preserving safe alphanumeric characters for the Supabase storage object key.
+  - **Infrastructure Layer (`SupabaseStorageService`):**
+    - Handled robust `ContentType` parsing using `MediaTypeHeaderValue.TryParse` with a safe fallback to `application/octet-stream`.
+    - Added `EnsureSuccessWithDetailsAsync` capturing the exact error body from Supabase Storage responses in exception messages instead of a generic status code failure.
+  - **Tests:**
+    - Added parameterized unit tests in `UploadAttachmentCommandHandlerTests.cs` covering Vietnamese file names (`Ảnh1.png`, `Đề cương hợp đồng (nháp).pdf`) and name auto-disambiguation formats.
+- **Changed paths:**
+  - `src/Tillegal.Application/Features/Attachments/Commands/UploadAttachment/UploadAttachmentCommandHandler.cs`
+  - `src/Tillegal.Infrastructure/ExternalServices/Storage/SupabaseStorageService.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Attachments/UploadAttachmentCommandHandlerTests.cs`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet test tests/Tillegal.Application.UnitTests/Tillegal.Application.UnitTests.csproj`: 299/299 passed.
+  - `dotnet test tests/Tillegal.ArchitectureTests/Tillegal.ArchitectureTests.csproj`: 7/7 passed.
+  - `dotnet format tillegal-be.slnx --no-restore --verify-no-changes`: Succeeded (0 discrepancies).
+- **Next action:**
+  - Restart backend server and retest uploading `Ảnh1.png` in Swagger.
+
+
