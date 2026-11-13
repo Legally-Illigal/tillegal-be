@@ -21,10 +21,12 @@ public sealed class SupabaseStorageService(HttpClient httpClient, IOptions<Supab
         using var request = CreateRequest(HttpMethod.Post, objectKey);
         request.Headers.TryAddWithoutValidation("x-upsert", "true");
         request.Content = new StreamContent(content);
-        request.Content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        request.Content.Headers.ContentType = MediaTypeHeaderValue.TryParse(contentType, out var parsedContentType)
+            ? parsedContentType
+            : new MediaTypeHeaderValue("application/octet-stream");
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await EnsureSuccessWithDetailsAsync(response, "upload", cancellationToken);
     }
 
     public async Task<StoredObject?> DownloadAsync(
@@ -42,7 +44,7 @@ public sealed class SupabaseStorageService(HttpClient httpClient, IOptions<Supab
             return null;
         }
 
-        response.EnsureSuccessStatusCode();
+        await EnsureSuccessWithDetailsAsync(response, "download", cancellationToken);
         var content = await response.Content.ReadAsByteArrayAsync(cancellationToken);
         var contentType = response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
         return new StoredObject(content, contentType);
@@ -52,7 +54,25 @@ public sealed class SupabaseStorageService(HttpClient httpClient, IOptions<Supab
     {
         using var request = CreateRequest(HttpMethod.Delete, objectKey);
         using var response = await httpClient.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        await EnsureSuccessWithDetailsAsync(response, "delete", cancellationToken);
+    }
+
+    private static async Task EnsureSuccessWithDetailsAsync(
+        HttpResponseMessage response,
+        string operation,
+        CancellationToken cancellationToken)
+    {
+        if (response.IsSuccessStatusCode)
+        {
+            return;
+        }
+
+        var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+        var message = string.IsNullOrWhiteSpace(errorBody)
+            ? $"Supabase storage {operation} failed with status {(int)response.StatusCode} ({response.ReasonPhrase})."
+            : $"Supabase storage {operation} failed with status {(int)response.StatusCode} ({response.ReasonPhrase}): {errorBody}";
+
+        throw new HttpRequestException(message, inner: null, statusCode: response.StatusCode);
     }
 
     private HttpRequestMessage CreateRequest(HttpMethod method, string objectKey)

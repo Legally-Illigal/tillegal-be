@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Security.Cryptography;
+using System.Text;
 using MapsterMapper;
 using MediatR;
 using Tillegal.Application.Common.Exceptions;
@@ -110,7 +112,8 @@ public sealed class UploadAttachmentCommandHandler(
             }
 
             var fileId = Guid.NewGuid();
-            var storagePath = $"attachments/{userId}/{fileId:N}/{finalFileName}";
+            var safeStorageFileName = BuildSafeStorageFileName(finalFileName);
+            var storagePath = $"attachments/{userId}/{fileId:N}/{safeStorageFileName}";
 
             await storageService.UploadAsync(
                 storagePath,
@@ -136,5 +139,63 @@ public sealed class UploadAttachmentCommandHandler(
         {
             memoryStream?.Dispose();
         }
+    }
+
+    private static string BuildSafeStorageFileName(string fileName)
+    {
+        var nameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
+        var ext = Path.GetExtension(fileName);
+
+        var safeBaseName = SanitizeAsciiSegment(nameWithoutExt);
+        if (string.IsNullOrEmpty(safeBaseName))
+        {
+            safeBaseName = "file";
+        }
+
+        var safeExt = new string(ext
+            .Where(c => c == '.' || (c is >= 'a' and <= 'z') || (c is >= 'A' and <= 'Z') || (c is >= '0' and <= '9'))
+            .ToArray());
+
+        return $"{safeBaseName}{safeExt}";
+    }
+
+    private static string SanitizeAsciiSegment(string input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            return string.Empty;
+        }
+
+        var normalized = input.Normalize(NormalizationForm.FormD);
+        var builder = new StringBuilder(normalized.Length);
+        var previousWasHyphen = false;
+
+        foreach (var ch in normalized)
+        {
+            if (CharUnicodeInfo.GetUnicodeCategory(ch) == UnicodeCategory.NonSpacingMark)
+            {
+                continue;
+            }
+
+            var mapped = ch switch
+            {
+                'đ' => 'd',
+                'Đ' => 'D',
+                _ => ch
+            };
+
+            if ((mapped is >= 'a' and <= 'z') || (mapped is >= 'A' and <= 'Z') || (mapped is >= '0' and <= '9') || mapped is '_' or '-')
+            {
+                builder.Append(mapped);
+                previousWasHyphen = mapped == '-';
+            }
+            else if (!previousWasHyphen && builder.Length > 0)
+            {
+                builder.Append('-');
+                previousWasHyphen = true;
+            }
+        }
+
+        return builder.ToString().Trim('-');
     }
 }
