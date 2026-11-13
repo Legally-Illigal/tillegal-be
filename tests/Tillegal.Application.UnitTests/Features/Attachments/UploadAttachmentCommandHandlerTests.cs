@@ -142,14 +142,15 @@ public sealed class UploadAttachmentCommandHandlerTests
             userId,
             "test.pdf",
             Arg.Any<string>(),
-            3,
+            Arg.Any<long>(),
             "application/pdf",
             Arg.Any<string?>(),
             Arg.Any<CancellationToken>())
             .Returns(createdAttachment);
 
-        using var stream = new MemoryStream([1, 2, 3]);
-        var command = new UploadAttachmentCommand(conversationId, "test.pdf", "application/pdf", 3, stream);
+        var validPdfBytes = "%PDF-1.4 test valid content"u8.ToArray();
+        using var stream = new MemoryStream(validPdfBytes);
+        var command = new UploadAttachmentCommand(conversationId, "test.pdf", "application/pdf", validPdfBytes.Length, stream);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -189,8 +190,9 @@ public sealed class UploadAttachmentCommandHandlerTests
         _attachmentService.GetAttachmentsByConversationIdAsync(conversationId, Arg.Any<CancellationToken>())
             .Returns(existingAttachments);
 
-        using var stream = new MemoryStream([1, 2, 3]);
-        var command = new UploadAttachmentCommand(conversationId, "sixth_file.pdf", "application/pdf", 3, stream);
+        var validPdfBytes = "%PDF-1.4 sixth file"u8.ToArray();
+        using var stream = new MemoryStream(validPdfBytes);
+        var command = new UploadAttachmentCommand(conversationId, "sixth_file.pdf", "application/pdf", validPdfBytes.Length, stream);
 
         // Act
         var act = () => _handler.Handle(command, CancellationToken.None);
@@ -198,6 +200,7 @@ public sealed class UploadAttachmentCommandHandlerTests
         // Assert
         var ex = await act.Should().ThrowAsync<DomainException>();
         ex.WithMessage("*at most 5 attachments*");
+        ex.Which.ErrorCode.Should().Be("ATTACHMENT_LIMIT_EXCEEDED");
         await _storageService.DidNotReceive().UploadAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
@@ -214,7 +217,7 @@ public sealed class UploadAttachmentCommandHandlerTests
         _conversationService.GetConversationByIdAsync(conversationId, Arg.Any<CancellationToken>())
             .Returns(conversation);
 
-        var fileContent = new byte[] { 1, 2, 3, 4, 5 };
+        var fileContent = "%PDF-1.4 duplicate contract content"u8.ToArray();
         var hash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(fileContent));
 
         var existingAttachment = UserAttachment.Create(
@@ -238,6 +241,34 @@ public sealed class UploadAttachmentCommandHandlerTests
         // Assert
         var ex = await act.Should().ThrowAsync<DomainException>();
         ex.WithMessage("*already been uploaded to this conversation*");
+        ex.Which.ErrorCode.Should().Be("DUPLICATE_FILE");
+        await _storageService.DidNotReceive().UploadAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_WhenFileSignatureMismatch_ShouldThrowDomainException()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var conversationId = Guid.NewGuid();
+        var conversation = Conversation.Create(userId, "Hội thoại của tôi");
+
+        _currentUserService.UserId.Returns(userId);
+        _currentUserService.Role.Returns("User");
+        _conversationService.GetConversationByIdAsync(conversationId, Arg.Any<CancellationToken>())
+            .Returns(conversation);
+
+        // MZ header (executable) disguised as .pdf
+        var fakePdfContent = new byte[] { 0x4D, 0x5A, 0x90, 0x00, 0x03, 0x00 };
+        using var stream = new MemoryStream(fakePdfContent);
+        var command = new UploadAttachmentCommand(conversationId, "trojan.pdf", "application/pdf", fakePdfContent.Length, stream);
+
+        // Act
+        var act = () => _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        var ex = await act.Should().ThrowAsync<DomainException>();
+        ex.Which.ErrorCode.Should().Be("INVALID_FILE_SIGNATURE");
         await _storageService.DidNotReceive().UploadAsync(Arg.Any<string>(), Arg.Any<Stream>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
@@ -254,7 +285,7 @@ public sealed class UploadAttachmentCommandHandlerTests
         _conversationService.GetConversationByIdAsync(conversationId, Arg.Any<CancellationToken>())
             .Returns(conversation);
 
-        var existingContent = new byte[] { 1, 2, 3 };
+        var existingContent = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3 };
         var existingHash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(existingContent));
 
         var existingAttachment = UserAttachment.Create(
@@ -269,7 +300,7 @@ public sealed class UploadAttachmentCommandHandlerTests
         _attachmentService.GetAttachmentsByConversationIdAsync(conversationId, Arg.Any<CancellationToken>())
             .Returns(new List<UserAttachment> { existingAttachment });
 
-        var newContent = new byte[] { 9, 9, 9, 9 };
+        var newContent = new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 4, 5, 6 };
         var newHash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(newContent));
 
         var createdAttachment = UserAttachment.Create(
@@ -326,7 +357,10 @@ public sealed class UploadAttachmentCommandHandlerTests
         _conversationService.GetConversationByIdAsync(conversationId, Arg.Any<CancellationToken>())
             .Returns(conversation);
 
-        var fileContent = new byte[] { 10, 20, 30 };
+        var fileContent = fileName.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
+            ? new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 10, 20, 30 }
+            : "%PDF-1.4 test vietnamese"u8.ToArray();
+
         var createdAttachment = UserAttachment.Create(
             conversationId,
             userId,

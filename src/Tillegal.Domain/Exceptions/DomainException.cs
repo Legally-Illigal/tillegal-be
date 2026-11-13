@@ -2,13 +2,17 @@ namespace Tillegal.Domain.Exceptions;
 
 public class DomainException : Exception
 {
-    public DomainException(string message)
+    public string? ErrorCode { get; }
+
+    public DomainException(string message, string? errorCode = null)
         : base(message)
     {
+        ErrorCode = errorCode;
     }
 
-    public DomainException(string message, Exception innerException)
+    public DomainException(string message, Exception innerException, string? errorCode = null)
         : base(message, innerException)
     {
+        ErrorCode = errorCode;
     }
 }

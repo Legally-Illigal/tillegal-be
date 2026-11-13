@@ -29,6 +29,11 @@ public sealed class LoginCommandHandler(
             throw new UnauthorizedException("Invalid email or password.");
         }
 
+        if (!user.IsActive)
+        {
+            throw new UnauthorizedException("User account has been deactivated or does not exist.");
+        }
+
         var roleName = user.Role?.Name ?? "User";
         var tokenResult = jwtTokenGenerator.GenerateToken(user, roleName);
 

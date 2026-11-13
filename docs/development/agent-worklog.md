@@ -1189,4 +1189,120 @@ Use this file as a concise handoff record, not as a transcript. Append an entry 
 - **Next action:**
   - Restart backend server and retest uploading `Ảnh1.png` in Swagger.
 
+## 2026-11-13 — Implement Part 1: Session Security, Logout, Me Endpoint, and Active User Validation
+
+- **Status:** Completed and verified.
+- **Requirement:**
+  - Address session security without leaking the access token to client-side scripts.
+  - Scope implemented (Part 1):
+    - Prevent access token leakage: Keep tokens strictly in `HttpOnly` cookies and omit token from response JSON bodies.
+    - Scope cookie path: Set `Path = "/api"` for `access_token` cookie appending and deleting.
+    - Add server-side logout: `POST /api/Auth/logout` to clear the `access_token` cookie.
+    - Add current user endpoint: `GET /api/Auth/me` with `[Authorize]` returning profile info (`Id`, `FullName`, `Email`, `PhoneNumber`, `Role`, `IsActive`) without token data.
+    - Add user active status verification: Validate `User.IsActive` on every authenticated request in `JwtBearerEvents.OnTokenValidated` backed by a 60-second `IMemoryCache` TTL to block deactivated accounts immediately.
+- **Completed:**
+  - **Domain / Application Layer:**
+    - Created `GetCurrentUserQuery`, `CurrentUserDto`, and `GetCurrentUserQueryHandler` in `src/Tillegal.Application/Features/Auth/Queries/GetCurrentUser`.
+    - Added `User` -> `CurrentUserDto` mapping in `AuthMappingConfig.cs`.
+  - **API Layer:**
+    - Created `LogoutApiResponse` in `src/Tillegal.Api/Contracts/Auth/LogoutContracts.cs`.
+    - Created `CurrentUserApiResponse` in `src/Tillegal.Api/Contracts/Auth/CurrentUserContracts.cs`.
+    - Added `CurrentUserDto` -> `CurrentUserApiResponse` mapping in `AuthApiMappingConfig.cs`.
+    - Updated `AuthController`:
+      - Moved `[AllowAnonymous]` to individual public actions (`Login`, `Register`, `RegisterWithGoogle`, `LoginWithGoogle`, `VerifyRegistration`, `ResendOtp`, `Logout`).
+      - Added `POST /api/Auth/logout` executing cookie clearing with `Path = "/api"`.
+      - Added `GET /api/Auth/me` with `[Authorize]` invoking `GetCurrentUserQuery`.
+      - Updated `SetAccessTokenCookie` with `Path = "/api"`.
+    - Updated `DependencyInjection.cs`:
+      - Registered `services.AddMemoryCache()`.
+      - Added `OnTokenValidated` in `JwtBearerOptions` checking user existence and `IsActive` status with 60s memory caching.
+  - **Tests:**
+    - Created `GetCurrentUserQueryHandlerTests.cs` covering unauthenticated, missing user id, user not found, deactivated user, and valid user retrieval.
+    - Added `Map_User_To_CurrentUserDto_ShouldMapAllFieldsCorrectly` test in `AuthMappingTests.cs`.
+- **Changed paths:**
+  - `src/Tillegal.Application/Features/Auth/Queries/GetCurrentUser/GetCurrentUserQuery.cs`
+  - `src/Tillegal.Application/Features/Auth/Queries/GetCurrentUser/CurrentUserDto.cs`
+  - `src/Tillegal.Application/Features/Auth/Queries/GetCurrentUser/GetCurrentUserQueryHandler.cs`
+  - `src/Tillegal.Application/Features/Auth/Mappings/AuthMappingConfig.cs`
+  - `src/Tillegal.Api/Contracts/Auth/LogoutContracts.cs`
+  - `src/Tillegal.Api/Contracts/Auth/CurrentUserContracts.cs`
+  - `src/Tillegal.Api/Mappings/AuthApiMappingConfig.cs`
+  - `src/Tillegal.Api/Controllers/AuthController.cs`
+  - `src/Tillegal.Api/DependencyInjection.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Auth/GetCurrentUserQueryHandlerTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Auth/AuthMappingTests.cs`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet test tests/Tillegal.Application.UnitTests/Tillegal.Application.UnitTests.csproj`: 305/305 passed.
+  - `dotnet test tests/Tillegal.ArchitectureTests/Tillegal.ArchitectureTests.csproj`: 7/7 passed.
+  - `dotnet format tillegal-be.slnx --verify-no-changes`: Succeeded (0 formatting errors).
+- **Next action:**
+  - Proceed with Part 2 (Attachment Magic Bytes signature verification and ProblemDetails error code standardization) when approved.
+
+## 2026-11-13 — Implement Part 2: Attachment Magic Bytes Signature Validation and Standardized ProblemDetails Error Codes
+
+- **Status:** Completed and verified.
+- **Requirement:**
+  - Prevent malicious file uploads (e.g. executable renamed with allowed extension like `.pdf` or `.docx`) by validating magic bytes file headers.
+  - Standardize business error responses with machine-readable error codes (`ErrorCode`) in RFC 7807 `ProblemDetails` (`extensions["code"]`).
+- **Completed:**
+  - **Domain Layer:**
+    - Extended `DomainException` to accept an optional `errorCode` parameter (`public string? ErrorCode { get; }`).
+  - **API Layer:**
+    - Updated `ExceptionHandlingMiddleware` to include `problem.Extensions["code"] = domainEx.ErrorCode` when handling `DomainException` with a non-empty `ErrorCode`.
+  - **Application Layer:**
+    - Created `FileSignatureValidator` in `src/Tillegal.Application/Features/Attachments/Common/FileSignatureValidator.cs` verifying header signatures for supported file types (`.pdf`, `.png`, `.jpg`/`.jpeg`, `.docx`, `.doc`, `.webp`, `.txt`) and rejecting disguised binaries / executables (`MZ`, `ELF`, null bytes).
+    - Updated `UploadAttachmentCommandHandler`:
+      - Validates magic bytes before hashing/uploading and throws `DomainException` with `INVALID_FILE_SIGNATURE` if signature doesn't match extension.
+      - Throws `DomainException` with `ATTACHMENT_LIMIT_EXCEEDED` when attachments count >= 5.
+      - Throws `DomainException` with `DUPLICATE_FILE` when duplicate SHA256 fileHash is detected in the conversation.
+  - **Tests:**
+    - Created `FileSignatureValidatorTests.cs` (13 tests) covering all allowed formats, corrupted headers, executables disguised as PDF or TXT, empty streams, and unsupported extensions.
+    - Updated `UploadAttachmentCommandHandlerTests.cs` to supply realistic valid magic bytes in test streams, verified `ATTACHMENT_LIMIT_EXCEEDED` and `DUPLICATE_FILE` error codes, and added `Handle_WhenFileSignatureMismatch_ShouldThrowDomainException`.
+- **Changed paths:**
+  - `src/Tillegal.Domain/Exceptions/DomainException.cs`
+  - `src/Tillegal.Api/Middlewares/ExceptionHandlingMiddleware.cs`
+  - `src/Tillegal.Application/Features/Attachments/Common/FileSignatureValidator.cs`
+  - `src/Tillegal.Application/Features/Attachments/Commands/UploadAttachment/UploadAttachmentCommandHandler.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Attachments/FileSignatureValidatorTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Attachments/UploadAttachmentCommandHandlerTests.cs`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet test tests/Tillegal.Application.UnitTests/Tillegal.Application.UnitTests.csproj`: 319/319 passed.
+  - `dotnet test tests/Tillegal.ArchitectureTests/Tillegal.ArchitectureTests.csproj`: 7/7 passed.
+  - `dotnet test tillegal-be.slnx`: 326/326 passed.
+  - `dotnet format tillegal-be.slnx --verify-no-changes`: Succeeded (0 formatting violations).
+- **Next action:**
+  - Ready for frontend integration and verification in local/staging environments.
+
+## 2026-11-13 — Handle Deactivated Account Login with Explicit Error Message
+
+- **Status:** Completed and verified.
+- **Requirement:**
+  - Ensure deactivated accounts (`IsActive == false` / `DeletedAt != null`) are not treated as non-existent during login.
+  - Distinguish between invalid credentials and deactivated accounts to return a clear error message instead of generic "Invalid email or password".
+- **Completed:**
+  - **Persistence Layer (`UserRepository`):**
+    - Added `.IgnoreQueryFilters()` to `GetByEmailAsync` and `GetByGoogleSubjectAsync` so EF Core retrieves the user record even if `DeletedAt != null`, populating `IsActive = false`.
+  - **Application Layer (`LoginCommandHandler`, `LoginWithGoogleCommandHandler`):**
+    - In `LoginCommandHandler`: Validates password first (to prevent email enumeration), then checks `if (!user.IsActive)` and throws `UnauthorizedException("User account has been deactivated or does not exist.")`.
+    - In `LoginWithGoogleCommandHandler`: Added `if (!user.IsActive)` check throwing `UnauthorizedException("User account has been deactivated or does not exist.")`.
+  - **Tests:**
+    - Added `Handle_WhenUserIsDeactivated_ShouldThrowUnauthorizedException` in `LoginCommandHandlerTests.cs`.
+    - Added `Handle_WhenGoogleUserIsDeactivated_ShouldThrowUnauthorizedException` in `LoginWithGoogleCommandHandlerTests.cs`.
+- **Changed paths:**
+  - `src/Tillegal.Persistence/Repositories/UserRepository.cs`
+  - `src/Tillegal.Application/Features/Auth/Commands/Login/LoginCommandHandler.cs`
+  - `src/Tillegal.Application/Features/Auth/Commands/LoginWithGoogle/LoginWithGoogleCommandHandler.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Auth/LoginCommandHandlerTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Auth/LoginWithGoogleCommandHandlerTests.cs`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet test tests/Tillegal.Application.UnitTests/Tillegal.Application.UnitTests.csproj`: 321/321 passed.
+  - `dotnet test tests/Tillegal.ArchitectureTests/Tillegal.ArchitectureTests.csproj`: 7/7 passed.
+  - `dotnet test tillegal-be.slnx`: 328/328 passed.
+  - `dotnet format tillegal-be.slnx --verify-no-changes`: Succeeded (0 formatting violations).
+- **Next action:**
+  - Restart backend server and verify login with deactivated account in Swagger.
+
 

@@ -1,6 +1,7 @@
 using FluentAssertions;
 using MapsterMapper;
 using NSubstitute;
+using Tillegal.Application.Common.Exceptions;
 using Tillegal.Application.Common.Interfaces;
 using Tillegal.Application.Common.Mappings;
 using Tillegal.Application.Common.Models;
@@ -59,6 +60,28 @@ public sealed class LoginWithGoogleCommandHandlerTests
         result.AccessToken.Should().Be("tillegal-jwt");
         result.ExpiresAt.Should().Be(generatedJwt.ExpiresAt);
         await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_WhenGoogleUserIsDeactivated_ShouldThrowUnauthorizedException()
+    {
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Email = "user@example.com",
+            FullName = "Nguyen Van A",
+            GoogleSubject = "google-sub-123",
+            IsActive = false
+        };
+        _tokenValidator.ValidateAsync("google-id-token", Arg.Any<CancellationToken>())
+            .Returns(new GoogleIdentity("google-sub-123", "user@example.com", "Nguyen Van A", true));
+        _userRepository.GetByGoogleSubjectAsync("google-sub-123", Arg.Any<CancellationToken>())
+            .Returns(user);
+
+        Func<Task> act = async () => await _handler.Handle(new LoginWithGoogleCommand("google-id-token"), CancellationToken.None);
+
+        await act.Should().ThrowAsync<UnauthorizedException>()
+            .WithMessage("User account has been deactivated or does not exist.");
     }
 
     [Fact]

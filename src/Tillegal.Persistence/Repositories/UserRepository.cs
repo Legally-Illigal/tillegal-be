@@ -26,6 +26,7 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
         var normalizedEmail = email.Trim().ToLowerInvariant();
         var dataModel = await dbContext.Users
             .AsNoTracking()
+            .IgnoreQueryFilters()
             .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == normalizedEmail, cancellationToken);
 
@@ -38,6 +39,7 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
 
         var dataModel = await dbContext.Users
             .AsNoTracking()
+            .IgnoreQueryFilters()
             .Include(u => u.Role)
             .FirstOrDefaultAsync(u => u.GoogleSubject == googleSubject, cancellationToken);
 

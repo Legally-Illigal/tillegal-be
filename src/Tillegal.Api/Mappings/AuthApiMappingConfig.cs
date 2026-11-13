@@ -6,6 +6,7 @@ using Tillegal.Application.Features.Auth.Commands.LoginWithGoogle;
 using Tillegal.Application.Features.Auth.Commands.RegisterWithGoogle;
 using Tillegal.Application.Features.Auth.Commands.ResendOtp;
 using Tillegal.Application.Features.Auth.Commands.VerifyRegistration;
+using Tillegal.Application.Features.Auth.Queries.GetCurrentUser;
 using Tillegal.Domain.Entities;
 
 namespace Tillegal.Api.Mappings;
@@ -34,5 +35,7 @@ public sealed class AuthApiMappingConfig : IRegister
         config.NewConfig<LoginResult, LoginApiResponse>()
             .Map(dest => dest.User, src => src.User)
             .Map(dest => dest.Message, _ => "Login successful.");
+
+        config.NewConfig<CurrentUserDto, CurrentUserApiResponse>();
     }
 }

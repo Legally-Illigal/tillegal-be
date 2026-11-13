@@ -10,12 +10,13 @@ using Tillegal.Application.Features.Auth.Commands.LoginWithGoogle;
 using Tillegal.Application.Features.Auth.Commands.RegisterWithGoogle;
 using Tillegal.Application.Features.Auth.Commands.ResendOtp;
 using Tillegal.Application.Features.Auth.Commands.VerifyRegistration;
+using Tillegal.Application.Features.Auth.Queries.GetCurrentUser;
 
 namespace Tillegal.Api.Controllers;
 
-[AllowAnonymous]
 public sealed class AuthController(ISender mediator, IMapper mapper) : BaseApiController(mediator, mapper)
 {
+    [AllowAnonymous]
     [HttpPost("login")]
     [ProducesResponseType(typeof(LoginApiResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
@@ -33,6 +34,7 @@ public sealed class AuthController(ISender mediator, IMapper mapper) : BaseApiCo
         return Ok(response);
     }
 
+    [AllowAnonymous]
     [HttpPost("register")]
     [ProducesResponseType(typeof(RegisterApiResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
@@ -47,6 +49,7 @@ public sealed class AuthController(ISender mediator, IMapper mapper) : BaseApiCo
         return Ok(response);
     }
 
+    [AllowAnonymous]
     [HttpPost("register/google")]
     [ProducesResponseType(typeof(GoogleRegistrationApiResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
@@ -63,6 +66,7 @@ public sealed class AuthController(ISender mediator, IMapper mapper) : BaseApiCo
         return Ok(response);
     }
 
+    [AllowAnonymous]
     [HttpPost("login/google")]
     [ProducesResponseType(typeof(GoogleRegistrationApiResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
@@ -79,6 +83,7 @@ public sealed class AuthController(ISender mediator, IMapper mapper) : BaseApiCo
         return Ok(response);
     }
 
+    [AllowAnonymous]
     [HttpPost("verify-registration")]
     [ProducesResponseType(typeof(VerifyRegistrationApiResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
@@ -93,17 +98,7 @@ public sealed class AuthController(ISender mediator, IMapper mapper) : BaseApiCo
         return Ok(response);
     }
 
-    private void SetAccessTokenCookie(string accessToken, DateTimeOffset expiresAt)
-    {
-        Response.Cookies.Append("access_token", accessToken, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = Request.IsHttps,
-            SameSite = SameSiteMode.Lax,
-            Expires = expiresAt
-        });
-    }
-
+    [AllowAnonymous]
     [HttpPost("resend-otp")]
     [ProducesResponseType(typeof(ResendOtpApiResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
@@ -116,5 +111,47 @@ public sealed class AuthController(ISender mediator, IMapper mapper) : BaseApiCo
         var response = Mapper.Map<ResendOtpApiResponse>(result);
 
         return Ok(response);
+    }
+
+    [AllowAnonymous]
+    [HttpPost("logout")]
+    [ProducesResponseType(typeof(LogoutApiResponse), StatusCodes.Status200OK)]
+    public IActionResult Logout()
+    {
+        Response.Cookies.Delete("access_token", new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = Request.IsHttps,
+            SameSite = SameSiteMode.Lax,
+            Path = "/api"
+        });
+
+        return Ok(new LogoutApiResponse());
+    }
+
+    [Authorize]
+    [HttpGet("me")]
+    [ProducesResponseType(typeof(CurrentUserApiResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetCurrentUser(CancellationToken cancellationToken)
+    {
+        var query = new GetCurrentUserQuery();
+        var result = await Mediator.Send(query, cancellationToken);
+        var response = Mapper.Map<CurrentUserApiResponse>(result);
+
+        return Ok(response);
+    }
+
+    private void SetAccessTokenCookie(string accessToken, DateTimeOffset expiresAt)
+    {
+        Response.Cookies.Append("access_token", accessToken, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = Request.IsHttps,
+            SameSite = SameSiteMode.Lax,
+            Path = "/api",
+            Expires = expiresAt
+        });
     }
 }
