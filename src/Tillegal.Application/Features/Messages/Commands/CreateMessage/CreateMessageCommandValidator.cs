@@ -19,5 +19,9 @@ public sealed class CreateMessageCommandValidator : AbstractValidator<CreateMess
         RuleFor(x => x.Content)
             .NotEmpty()
             .WithMessage("Content cannot be empty.");
+
+        RuleFor(x => x.ParentMessageId)
+            .Must(id => !id.HasValue || id.Value != Guid.Empty)
+            .WithMessage("ParentMessageId cannot be an empty GUID when specified.");
     }
 }

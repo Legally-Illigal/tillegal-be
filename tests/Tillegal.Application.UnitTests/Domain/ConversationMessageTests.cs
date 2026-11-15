@@ -99,6 +99,37 @@ public sealed class ConversationMessageTests
         message.Role.Should().Be("user");
         message.Content.Should().Be(content);
         message.Citations.Should().BeNull();
+        message.ParentMessageId.Should().BeNull();
+    }
+
+    [Fact]
+    public void Create_WithValidParentMessageId_ShouldSetParentMessageId()
+    {
+        // Arrange
+        var conversationId = Guid.CreateVersion7();
+        var parentId = Guid.CreateVersion7();
+        var content = "Câu hỏi rẽ nhánh";
+
+        // Act
+        var message = ConversationMessage.Create(conversationId, "user", content, parentId);
+
+        // Assert
+        message.Should().NotBeNull();
+        message.ParentMessageId.Should().Be(parentId);
+    }
+
+    [Fact]
+    public void Create_WithEmptyParentMessageId_ShouldThrowDomainException()
+    {
+        // Arrange
+        var conversationId = Guid.CreateVersion7();
+
+        // Act
+        var act = () => ConversationMessage.Create(conversationId, "user", "Nội dung", Guid.Empty);
+
+        // Assert
+        act.Should().Throw<DomainException>()
+            .WithMessage("ParentMessageId cannot be an empty GUID.");
     }
 
     [Fact]

@@ -6,6 +6,7 @@ namespace Tillegal.Api.Contracts.Messages;
 public sealed record CreateMessageApiRequest(
     string? Role,
     string Content,
+    Guid? ParentMessageId = null,
     JsonDocument? Citations = null);
 
 public sealed record UpdateMessageApiRequest(
@@ -15,6 +16,7 @@ public sealed record UpdateMessageApiRequest(
 public sealed record MessageApiResponse(
     Guid Id,
     Guid ConversationId,
+    Guid? ParentMessageId,
     string Role,
     string Content,
     JsonDocument? Citations,

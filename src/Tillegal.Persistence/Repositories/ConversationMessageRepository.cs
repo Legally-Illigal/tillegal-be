@@ -128,6 +128,7 @@ public sealed class ConversationMessageRepository(AppDbContext dbContext) : ICon
         return new ConversationMessage(
             dataModel.Id,
             dataModel.ConversationId,
+            dataModel.ParentMessageId,
             dataModel.Role,
             dataModel.Content,
             dataModel.Citations,
@@ -142,6 +143,7 @@ public sealed class ConversationMessageRepository(AppDbContext dbContext) : ICon
         {
             Id = entity.Id,
             ConversationId = entity.ConversationId,
+            ParentMessageId = entity.ParentMessageId,
             Role = entity.Role,
             Content = entity.Content,
             Citations = entity.Citations,

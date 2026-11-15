@@ -25,6 +25,8 @@ public sealed class ConversationMessageConfiguration : IEntityTypeConfiguration<
         builder.Property(m => m.ConversationId)
             .IsRequired();
 
+        builder.Property(m => m.ParentMessageId);
+
         builder.Property(m => m.Role)
             .HasColumnType("text")
             .IsRequired();
@@ -40,6 +42,9 @@ public sealed class ConversationMessageConfiguration : IEntityTypeConfiguration<
         builder.HasIndex(m => m.ConversationId)
             .HasDatabaseName("IX_ConversationMessages_ConversationId");
 
+        builder.HasIndex(m => m.ParentMessageId)
+            .HasDatabaseName("IX_ConversationMessages_ParentMessageId");
+
         builder.HasIndex(m => m.CreatedAt)
             .HasDatabaseName("IX_ConversationMessages_CreatedAt");
 
@@ -49,5 +54,11 @@ public sealed class ConversationMessageConfiguration : IEntityTypeConfiguration<
             .HasForeignKey(m => m.ConversationId)
             .OnDelete(DeleteBehavior.Cascade)
             .HasConstraintName("FK_ConversationMessages_Conversations_ConversationId");
+
+        builder.HasOne(m => m.ParentMessage)
+            .WithMany(m => m.ChildMessages)
+            .HasForeignKey(m => m.ParentMessageId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .HasConstraintName("FK_ConversationMessages_ConversationMessages_ParentMessageId");
     }
 }

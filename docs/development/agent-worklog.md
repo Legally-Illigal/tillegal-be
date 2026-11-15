@@ -1305,4 +1305,130 @@ Use this file as a concise handoff record, not as a transcript. Append an entry 
 - **Next action:**
   - Restart backend server and verify login with deactivated account in Swagger.
 
+## 2026-11-14 — Remove DELETE Message API and Implement Conversation Forking (Branching)
+
+- **Status:** Completed and verified.
+- **Context & Requirement:**
+  - Chatbots rely on conversational context integrity (turn-based alternating prompts). Deleting individual messages in the middle disrupts RAG, multi-turn history, audit trails, and `AiEvaluationLog` metrics.
+  - As agreed, user requested Approach 2 (Conversation Forking): branching a conversation into a new independent conversation entity from a specified message rather than in-place message mutation or mid-conversation deletion.
+  - Obsolete `DELETE /api/conversations/{conversationId}/messages/{messageId}` API is removed.
+- **Completed:**
+  - **Domain Layer (`Tillegal.Domain`):**
+    - Added `ConversationMessage.ForkFrom(Guid newConversationId, ConversationMessage source)` to safely clone messages with new UUIDv7 identifiers, preserving original `CreatedAt` timestamps and deep-cloning citations while assigning the new conversation ID.
+    - Added `IConversationMessageService.ForkMessagesAsync(...)` and implemented it in `ConversationMessageService` using `IConversationMessageRepository.AddRangeAsync`.
+  - **Application Layer (`Tillegal.Application`):**
+    - Created `ForkConversationCommand`, `ForkConversationCommandValidator`, and `ForkConversationCommandHandler` under `Features/Conversations/Commands/ForkConversation/`.
+    - Handles authorization (rejecting Admin, verifying conversation ownership), slicing message history up to `FromMessageId` (or copying all messages if omitted), generating default clamped titles (`{Title} (Nhánh mới)` up to 200 chars) or applying custom titles, copying messages, and optionally appending a new starting user prompt.
+    - Removed obsolete `DeleteMessageCommand`, `DeleteMessageCommandHandler`, and `DeleteMessageCommandValidator`.
+  - **API Layer (`Tillegal.Api`):**
+    - Added `ForkConversationApiRequest` in `Contracts/Conversations/ConversationContracts.cs`.
+    - Added `POST /api/conversations/{id}/fork` in `ConversationsController`, returning `201 Created` with `CreatedAtAction` pointing to `GetById`.
+    - Removed `DELETE /api/conversations/{conversationId}/messages/{messageId}` from `ConversationsController`.
+  - **Tests:**
+    - Created `ForkConversationCommandHandlerTests.cs` (10 unit tests) covering authentication, role check, not-found cases, ownership check, missing message ID, full fork, partial fork up to message ID, new prompt creation, and title clamping.
+    - Added `ForkConversationCommandValidator` tests in `ConversationCommandValidatorTests.cs`.
+    - Removed obsolete `DeleteMessageCommandHandlerTests.cs` and `DeleteMessageCommandValidator` tests in `MessageCommandValidatorTests.cs`.
+- **Changed paths:**
+  - `src/Tillegal.Domain/Entities/ConversationMessage.cs`
+  - `src/Tillegal.Domain/Interfaces/Services/IConversationMessageService.cs`
+  - `src/Tillegal.Domain/Services/ConversationMessageService.cs`
+  - `src/Tillegal.Application/Features/Conversations/Commands/ForkConversation/ForkConversationCommand.cs`
+  - `src/Tillegal.Application/Features/Conversations/Commands/ForkConversation/ForkConversationCommandValidator.cs`
+  - `src/Tillegal.Application/Features/Conversations/Commands/ForkConversation/ForkConversationCommandHandler.cs`
+  - `src/Tillegal.Api/Contracts/Conversations/ConversationContracts.cs`
+  - `src/Tillegal.Api/Controllers/ConversationsController.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Conversations/ForkConversationCommandHandlerTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Conversations/ConversationCommandValidatorTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Messages/MessageCommandValidatorTests.cs`
+  - `docs/development/agent-worklog.md`
+- **Removed paths:**
+  - `src/Tillegal.Application/Features/Messages/Commands/DeleteMessage/DeleteMessageCommand.cs`
+  - `src/Tillegal.Application/Features/Messages/Commands/DeleteMessage/DeleteMessageCommandHandler.cs`
+  - `src/Tillegal.Application/Features/Messages/Commands/DeleteMessage/DeleteMessageCommandValidator.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Messages/DeleteMessageCommandHandlerTests.cs`
+- **Checks run:**
+  - `dotnet test tillegal-be.slnx`: 333/333 passed (326 Unit Tests, 7 Architecture Tests).
+  - `dotnet format tillegal-be.slnx --verify-no-changes`: Passed (0 formatting violations).
+- **Next action:**
+  - Ready for frontend to integrate the `POST /api/conversations/{id}/fork` endpoint for branching/forking conversations.
+
+## 2026-11-15 — Implement ParentMessageId for In-Conversation Message Branching (Tree UI Support)
+
+- **Status:** Completed and verified.
+- **Context & Requirement:**
+  - Frontend is implementing in-place tree-based branching navigation (`< 1/2 >`, `< 2/2 >`).
+  - Implemented Approach 1 (Adjacency List in Flat Table): Add a nullable `ParentMessageId` column to `ConversationMessages` so messages can branch within the same conversation without any complex recursive DB structure.
+- **Completed:**
+  - **Domain Layer (`Tillegal.Domain`):**
+    - Added `ParentMessageId` property (Guid?, nullable) to `ConversationMessage`.
+    - Added constructor and factory overloads supporting `parentMessageId` with validation (`ParentMessageId` cannot be an empty GUID).
+    - Updated `ConversationMessage.ForkFrom` and `ConversationMessageService.ForkMessagesAsync` to maintain and map parent-child message relationships across forks.
+    - Updated `IConversationMessageService.CreateMessageAsync` and `ConversationMessageService.CreateMessageAsync` to accept optional `parentMessageId`.
+  - **Persistence Layer (`Tillegal.Persistence`):**
+    - Added `ParentMessageId`, `ParentMessage`, and `ChildMessages` to `ConversationMessageDataModel`.
+    - Configured foreign key relationship on `ConversationMessages.ParentMessageId` referencing `ConversationMessages.Id` with `DeleteBehavior.Restrict` and index `IX_ConversationMessages_ParentMessageId`.
+    - Updated repository mapping in `ConversationMessageRepository.cs`.
+    - Added EF Core migration `20261115034419_AddParentMessageIdToConversationMessages.cs` and updated snapshot.
+  - **Application Layer (`Tillegal.Application`):**
+    - Added `ParentMessageId` to `MessageDto` and `CreateMessageCommand`.
+    - In `CreateMessageCommandHandler`: Validated that when `ParentMessageId` is provided, the parent message must exist and belong to the same conversation; otherwise throws `NotFoundException`.
+    - In `CreateMessageCommandValidator`: Validated that `ParentMessageId` is not an empty GUID when specified.
+  - **API Layer (`Tillegal.Api`):**
+    - Added `ParentMessageId` to `CreateMessageApiRequest` and `MessageApiResponse`.
+    - Updated `ConversationsController.CreateMessage` to forward `request.ParentMessageId`.
+  - **Tests:**
+    - Added tests in `CreateMessageCommandHandlerTests.cs` for creating messages with `ParentMessageId`, parent message not found, and parent message belonging to a different conversation.
+    - Added validator test in `MessageCommandValidatorTests.cs` for empty GUID parent ID.
+    - Added entity tests in `ConversationMessageTests.cs` for setting `ParentMessageId` and validating against empty GUID.
+- **Changed paths:**
+  - `src/Tillegal.Domain/Entities/ConversationMessage.cs`
+  - `src/Tillegal.Domain/Interfaces/Services/IConversationMessageService.cs`
+  - `src/Tillegal.Domain/Services/ConversationMessageService.cs`
+  - `src/Tillegal.Persistence/DataModels/ConversationMessageDataModel.cs`
+  - `src/Tillegal.Persistence/Configurations/ConversationMessageConfiguration.cs`
+  - `src/Tillegal.Persistence/Repositories/ConversationMessageRepository.cs`
+  - `src/Tillegal.Persistence/Migrations/20261115034419_AddParentMessageIdToConversationMessages.cs`
+  - `src/Tillegal.Persistence/Migrations/20261115034419_AddParentMessageIdToConversationMessages.Designer.cs`
+  - `src/Tillegal.Persistence/Migrations/AppDbContextModelSnapshot.cs`
+  - `src/Tillegal.Application/Features/Messages/Models/MessageDto.cs`
+  - `src/Tillegal.Application/Features/Messages/Commands/CreateMessage/CreateMessageCommand.cs`
+  - `src/Tillegal.Application/Features/Messages/Commands/CreateMessage/CreateMessageCommandHandler.cs`
+  - `src/Tillegal.Application/Features/Messages/Commands/CreateMessage/CreateMessageCommandValidator.cs`
+  - `src/Tillegal.Api/Contracts/Messages/MessageContracts.cs`
+  - `src/Tillegal.Api/Controllers/ConversationsController.cs`
+  - `tests/Tillegal.Application.UnitTests/Domain/ConversationMessageTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Messages/CreateMessageCommandHandlerTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Messages/MessageCommandValidatorTests.cs`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet test tillegal-be.slnx`: 340/340 passed (333 Unit Tests, 7 Architecture Tests).
+  - `dotnet format --no-restore --verify-no-changes`: Passed (0 formatting violations).
+- **Next action:**
+  - Apply EF Core migration to database (`dotnet ef database update`) when running against a live PostgreSQL instance.
+  - Frontend can send `parentMessageId` on `POST /api/conversations/{id}/messages` to create branch replies.
+
+## 2026-11-15 — Remove Obsolete Fork Conversation Feature
+
+- **Status:** Completed and verified.
+- **Context & Requirement:**
+  - With the full adoption of in-conversation tree branching via `ParentMessageId` (Approach 1), the experimental `POST /api/conversations/{id}/fork` (Approach 2) is no longer needed.
+  - Removed all fork-related endpoints, commands, domain methods, and tests to keep the codebase lean and free of unused code.
+- **Completed:**
+  - **API Layer (`Tillegal.Api`):**
+    - Removed `POST /api/conversations/{id}/fork` from `ConversationsController`.
+    - Removed `ForkConversationApiRequest` from `ConversationContracts.cs`.
+  - **Application Layer (`Tillegal.Application`):**
+    - Removed `ForkConversationCommand`, `ForkConversationCommandHandler`, and `ForkConversationCommandValidator`.
+  - **Domain Layer (`Tillegal.Domain`):**
+    - Removed `ConversationMessage.ForkFrom` and `IConversationMessageService.ForkMessagesAsync` / `ConversationMessageService.ForkMessagesAsync`.
+  - **Tests:**
+    - Removed `ForkConversationCommandHandlerTests.cs`.
+    - Removed `ForkConversationCommandValidator` tests from `ConversationCommandValidatorTests.cs`.
+- **Checks run:**
+  - `dotnet test tillegal-be.slnx`: 325/325 passed (318 Unit Tests, 7 Architecture Tests).
+  - `dotnet format --no-restore --verify-no-changes`: Passed (0 formatting violations).
+
+
+
+
 
