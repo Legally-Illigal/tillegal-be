@@ -41,10 +41,23 @@ public sealed class CreateMessageCommandHandler(
             throw new ForbiddenAccessException("You do not have access to this conversation.");
         }
 
+        if (request.ParentMessageId.HasValue && request.ParentMessageId.Value != Guid.Empty)
+        {
+            var parentMessage = await messageService.GetMessageByIdAsync(
+                request.ParentMessageId.Value,
+                cancellationToken);
+
+            if (parentMessage is null || parentMessage.ConversationId != request.ConversationId)
+            {
+                throw new NotFoundException("Message", request.ParentMessageId.Value);
+            }
+        }
+
         var message = await messageService.CreateMessageAsync(
             request.ConversationId,
             request.Role,
             request.Content,
+            request.ParentMessageId,
             request.Citations,
             cancellationToken);
 

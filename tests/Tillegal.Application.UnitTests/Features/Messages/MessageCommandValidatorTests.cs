@@ -1,6 +1,5 @@
 using FluentAssertions;
 using Tillegal.Application.Features.Messages.Commands.CreateMessage;
-using Tillegal.Application.Features.Messages.Commands.DeleteMessage;
 using Tillegal.Application.Features.Messages.Commands.UpdateMessage;
 using Tillegal.Application.Features.Messages.Queries.GetConversationMessages;
 using Tillegal.Application.Features.Messages.Queries.GetMessageById;
@@ -12,7 +11,6 @@ public sealed class MessageCommandValidatorTests
 {
     private readonly CreateMessageCommandValidator _createValidator = new();
     private readonly UpdateMessageCommandValidator _updateValidator = new();
-    private readonly DeleteMessageCommandValidator _deleteValidator = new();
     private readonly GetConversationMessagesQueryValidator _getMessagesValidator = new();
     private readonly GetMessageByIdQueryValidator _getMessageByIdValidator = new();
 
@@ -22,6 +20,23 @@ public sealed class MessageCommandValidatorTests
         var command = new CreateMessageCommand(Guid.CreateVersion7(), "user", "Hỏi thủ tục");
         var result = _createValidator.Validate(command);
         result.IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CreateMessage_WhenValidWithParentMessageId_ShouldNotHaveErrors()
+    {
+        var command = new CreateMessageCommand(Guid.CreateVersion7(), "user", "Hỏi thủ tục", Guid.CreateVersion7());
+        var result = _createValidator.Validate(command);
+        result.IsValid.Should().BeTrue();
+    }
+
+    [Fact]
+    public void CreateMessage_WhenParentMessageIdEmptyGuid_ShouldHaveError()
+    {
+        var command = new CreateMessageCommand(Guid.CreateVersion7(), "user", "Hỏi thủ tục", Guid.Empty);
+        var result = _createValidator.Validate(command);
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().Contain(e => e.PropertyName == nameof(command.ParentMessageId));
     }
 
     [Fact]
@@ -104,32 +119,6 @@ public sealed class MessageCommandValidatorTests
         var result = _updateValidator.Validate(command);
         result.IsValid.Should().BeFalse();
         result.Errors.Should().Contain(e => e.PropertyName == nameof(command.Content));
-    }
-
-    [Fact]
-    public void DeleteMessage_WhenValid_ShouldNotHaveErrors()
-    {
-        var command = new DeleteMessageCommand(Guid.CreateVersion7(), Guid.CreateVersion7());
-        var result = _deleteValidator.Validate(command);
-        result.IsValid.Should().BeTrue();
-    }
-
-    [Fact]
-    public void DeleteMessage_WhenConversationIdEmpty_ShouldHaveError()
-    {
-        var command = new DeleteMessageCommand(Guid.Empty, Guid.CreateVersion7());
-        var result = _deleteValidator.Validate(command);
-        result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.PropertyName == nameof(command.ConversationId));
-    }
-
-    [Fact]
-    public void DeleteMessage_WhenMessageIdEmpty_ShouldHaveError()
-    {
-        var command = new DeleteMessageCommand(Guid.CreateVersion7(), Guid.Empty);
-        var result = _deleteValidator.Validate(command);
-        result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.PropertyName == nameof(command.MessageId));
     }
 
     [Fact]

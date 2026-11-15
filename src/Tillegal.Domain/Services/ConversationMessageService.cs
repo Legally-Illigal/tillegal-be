@@ -13,10 +13,11 @@ public sealed class ConversationMessageService(
         Guid conversationId,
         string role,
         string content,
+        Guid? parentMessageId = null,
         JsonDocument? citations = null,
         CancellationToken cancellationToken = default)
     {
-        var message = ConversationMessage.Create(conversationId, role, content, citations);
+        var message = ConversationMessage.Create(conversationId, role, content, parentMessageId, citations);
         await messageRepository.AddAsync(message, cancellationToken);
         return message;
     }

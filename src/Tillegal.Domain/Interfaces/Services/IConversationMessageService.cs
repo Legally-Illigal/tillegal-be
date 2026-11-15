@@ -10,6 +10,7 @@ public interface IConversationMessageService
         Guid conversationId,
         string role,
         string content,
+        Guid? parentMessageId = null,
         JsonDocument? citations = null,
         CancellationToken cancellationToken = default);
 

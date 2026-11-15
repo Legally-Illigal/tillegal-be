@@ -22,7 +22,6 @@ using Tillegal.Application.Features.Conversations.Commands.UpdateConversation;
 using Tillegal.Application.Features.Conversations.Queries.GetConversationById;
 using Tillegal.Application.Features.Conversations.Queries.GetConversations;
 using Tillegal.Application.Features.Messages.Commands.CreateMessage;
-using Tillegal.Application.Features.Messages.Commands.DeleteMessage;
 using Tillegal.Application.Features.Messages.Commands.UpdateMessage;
 using Tillegal.Application.Features.Messages.Queries.GetConversationMessages;
 using Tillegal.Application.Features.Messages.Queries.GetMessageById;
@@ -124,6 +123,7 @@ public sealed class ConversationsController(ISender mediator, IMapper mapper)
             conversationId,
             role,
             request.Content,
+            request.ParentMessageId,
             request.Citations);
 
         var result = await Mediator.Send(command, cancellationToken);
@@ -195,22 +195,6 @@ public sealed class ConversationsController(ISender mediator, IMapper mapper)
         var response = Mapper.Map<MessageApiResponse>(result);
 
         return Ok(response);
-    }
-
-    [HttpDelete("{conversationId:guid}/messages/{messageId:guid}")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DeleteMessage(
-        [FromRoute] Guid conversationId,
-        [FromRoute] Guid messageId,
-        CancellationToken cancellationToken)
-    {
-        var command = new DeleteMessageCommand(conversationId, messageId);
-        await Mediator.Send(command, cancellationToken);
-
-        return NoContent();
     }
 
     [HttpPost("{conversationId:guid}/messages/{messageId:guid}/evaluation")]

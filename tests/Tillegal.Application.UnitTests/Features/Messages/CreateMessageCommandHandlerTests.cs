@@ -122,7 +122,7 @@ public sealed class CreateMessageCommandHandlerTests
         _currentUserService.Role.Returns("User");
         _conversationService.GetConversationByIdAsync(conversationId, Arg.Any<CancellationToken>())
             .Returns(conversation);
-        _messageService.CreateMessageAsync(conversationId, "user", "Hello legal AI", null, Arg.Any<CancellationToken>())
+        _messageService.CreateMessageAsync(conversationId, "user", "Hello legal AI", null, null, Arg.Any<CancellationToken>())
             .Returns(created);
 
         var command = new CreateMessageCommand(conversationId, "user", "Hello legal AI");
@@ -136,5 +136,88 @@ public sealed class CreateMessageCommandHandlerTests
         result.Content.Should().Be("Hello legal AI");
         result.ConversationId.Should().Be(conversationId);
         await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_WithValidParentMessageId_ShouldCreateMessageWithParentId()
+    {
+        // Arrange
+        var userId = Guid.CreateVersion7();
+        var conversationId = Guid.CreateVersion7();
+        var parentId = Guid.CreateVersion7();
+        var conversation = Conversation.Create(userId, "My Chat");
+        var parentMessage = ConversationMessage.CreateUserMessage(conversationId, "Parent question");
+        var created = ConversationMessage.Create(conversationId, "user", "Child branch question", parentId);
+
+        _currentUserService.UserId.Returns(userId);
+        _currentUserService.Role.Returns("User");
+        _conversationService.GetConversationByIdAsync(conversationId, Arg.Any<CancellationToken>())
+            .Returns(conversation);
+        _messageService.GetMessageByIdAsync(parentId, Arg.Any<CancellationToken>())
+            .Returns(parentMessage);
+        _messageService.CreateMessageAsync(conversationId, "user", "Child branch question", parentId, null, Arg.Any<CancellationToken>())
+            .Returns(created);
+
+        var command = new CreateMessageCommand(conversationId, "user", "Child branch question", parentId);
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.ParentMessageId.Should().Be(parentId);
+        await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_WhenParentMessageNotFound_ShouldThrowNotFoundException()
+    {
+        // Arrange
+        var userId = Guid.CreateVersion7();
+        var conversationId = Guid.CreateVersion7();
+        var parentId = Guid.CreateVersion7();
+        var conversation = Conversation.Create(userId, "My Chat");
+
+        _currentUserService.UserId.Returns(userId);
+        _currentUserService.Role.Returns("User");
+        _conversationService.GetConversationByIdAsync(conversationId, Arg.Any<CancellationToken>())
+            .Returns(conversation);
+        _messageService.GetMessageByIdAsync(parentId, Arg.Any<CancellationToken>())
+            .Returns((ConversationMessage?)null);
+
+        var command = new CreateMessageCommand(conversationId, "user", "Child question", parentId);
+
+        // Act
+        var act = () => _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task Handle_WhenParentMessageBelongsToDifferentConversation_ShouldThrowNotFoundException()
+    {
+        // Arrange
+        var userId = Guid.CreateVersion7();
+        var conversationId = Guid.CreateVersion7();
+        var otherConversationId = Guid.CreateVersion7();
+        var parentId = Guid.CreateVersion7();
+        var conversation = Conversation.Create(userId, "My Chat");
+        var parentMessage = ConversationMessage.CreateUserMessage(otherConversationId, "Question in other conversation");
+
+        _currentUserService.UserId.Returns(userId);
+        _currentUserService.Role.Returns("User");
+        _conversationService.GetConversationByIdAsync(conversationId, Arg.Any<CancellationToken>())
+            .Returns(conversation);
+        _messageService.GetMessageByIdAsync(parentId, Arg.Any<CancellationToken>())
+            .Returns(parentMessage);
+
+        var command = new CreateMessageCommand(conversationId, "user", "Child question", parentId);
+
+        // Act
+        var act = () => _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        await act.Should().ThrowAsync<NotFoundException>();
     }
 }

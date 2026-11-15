@@ -199,6 +199,9 @@ namespace Tillegal.Persistence.Migrations
                     b.Property<DateTimeOffset?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("ParentMessageId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasColumnType("text");
@@ -213,6 +216,9 @@ namespace Tillegal.Persistence.Migrations
 
                     b.HasIndex("CreatedAt")
                         .HasDatabaseName("IX_ConversationMessages_CreatedAt");
+
+                    b.HasIndex("ParentMessageId")
+                        .HasDatabaseName("IX_ConversationMessages_ParentMessageId");
 
                     b.ToTable("ConversationMessages", (string)null);
                 });
@@ -401,7 +407,15 @@ namespace Tillegal.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("FK_ConversationMessages_Conversations_ConversationId");
 
+                    b.HasOne("Tillegal.Persistence.DataModels.ConversationMessageDataModel", "ParentMessage")
+                        .WithMany("ChildMessages")
+                        .HasForeignKey("ParentMessageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("FK_ConversationMessages_ConversationMessages_ParentMessageId");
+
                     b.Navigation("Conversation");
+
+                    b.Navigation("ParentMessage");
                 });
 
             modelBuilder.Entity("Tillegal.Persistence.DataModels.UserAttachmentDataModel", b =>
@@ -447,6 +461,8 @@ namespace Tillegal.Persistence.Migrations
             modelBuilder.Entity("Tillegal.Persistence.DataModels.ConversationMessageDataModel", b =>
                 {
                     b.Navigation("AiEvaluationLogs");
+
+                    b.Navigation("ChildMessages");
                 });
 
             modelBuilder.Entity("Tillegal.Persistence.DataModels.RoleDataModel", b =>
