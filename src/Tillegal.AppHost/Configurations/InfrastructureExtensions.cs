@@ -50,6 +50,9 @@ public static class InfrastructureExtensions
             .Validate(options => !string.IsNullOrWhiteSpace(options.ClientId), "Google OAuth client ID is required.")
             .ValidateOnStart();
 
+        services.AddOptions<AiServiceOptions>()
+            .Bind(configuration.GetSection(AiServiceOptions.SectionName));
+
         return services.AddInfrastructure(configuration);
     }
 }

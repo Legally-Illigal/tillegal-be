@@ -8,6 +8,7 @@ using Tillegal.Infrastructure.ExternalServices.Jobs;
 using Tillegal.Infrastructure.ExternalServices.Mail;
 using Tillegal.Infrastructure.ExternalServices.RateLimiting;
 using Tillegal.Infrastructure.ExternalServices.Storage;
+using Tillegal.Infrastructure.ExternalServices.Ai;
 using Tillegal.Infrastructure.Logging;
 using Tillegal.Infrastructure.SystemServices;
 
@@ -33,6 +34,9 @@ public static class DependencyInjection
             .AddHttpMessageHandler<LoggingHandler>();
         services.AddHttpClient<IStorageService, SupabaseStorageService>()
             .AddHttpMessageHandler<LoggingHandler>();
+        services.AddHttpClient<IAiServiceClient, AiServiceClient>()
+            .AddHttpMessageHandler<LoggingHandler>();
+        services.AddScoped<IDailyUpdateTask, DailyCrawlUpdateTask>();
 
         var timeZoneId = configuration["BackgroundJobs:TimeZone"] ?? "Asia/Ho_Chi_Minh";
         var timeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
