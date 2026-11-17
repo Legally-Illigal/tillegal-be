@@ -1464,6 +1464,43 @@ Use this file as a concise handoff record, not as a transcript. Append an entry 
   - `dotnet test tests/Tillegal.Application.UnitTests/Tillegal.Application.UnitTests.csproj --no-restore -m:1`: 318/318 passed.
   - `dotnet format --verify-no-changes --no-restore`: Passed (0 formatting violations).
 
+## 2026-11-17 — Implement automated AI Service daily crawl API trigger (T - 1)
+
+- **Status:** Completed.
+- **Reason:** Automate the daily crawl trigger via AI Service targeting the previous day's date (`T - 1`) based on the endpoint `POST /ingestion/vbpl/crawl`.
+- **Completed:**
+  - **Application Port (`Tillegal.Application`):**
+    - Created `IAiServiceClient` interface under `src/Tillegal.Application/Common/Interfaces/IAiServiceClient.cs` accepting `DateOnly crawlDate` and returning `Task<string?>` (Job ID).
+  - **Infrastructure Layer (`Tillegal.Infrastructure`):**
+    - Created `AiServiceOptions` under `src/Tillegal.Infrastructure/Options/AiServiceOptions.cs` configuring `BaseUrl` (default: `http://127.0.0.1:8000`).
+    - Implemented `AiServiceClient` under `src/Tillegal.Infrastructure/ExternalServices/Ai/AiServiceClient.cs` dispatching POST `/ingestion/vbpl/crawl` with JSON payload `{"crawl_date":"yyyy-MM-dd"}` and parsing the response job ID.
+    - Implemented `DailyCrawlUpdateTask` under `src/Tillegal.Infrastructure/ExternalServices/Jobs/DailyCrawlUpdateTask.cs` implementing `IDailyUpdateTask`. It calculates the previous calendar day (`T - 1`) in the configured timezone (`BackgroundJobs:TimeZone`, defaulting to `Asia/Ho_Chi_Minh`) using `IDateTimeProvider`, then triggers the crawl service.
+    - Registered `IAiServiceClient` typed `HttpClient` with `LoggingHandler` and registered `IDailyUpdateTask` (`DailyCrawlUpdateTask`) in `src/Tillegal.Infrastructure/DependencyInjection.cs`, hooking directly into the existing Quartz.NET `DailyUpdateJob` running at midnight.
+  - **Host Layer (`Tillegal.AppHost`):**
+    - Bound `AiServiceOptions` in `src/Tillegal.AppHost/Configurations/InfrastructureExtensions.cs`.
+    - Added `AiService` configuration section to `appsettings.Example.json` and `appsettings.Development.json`.
+  - **Automation Script:**
+    - Created standalone PowerShell script [crawl-daily.ps1](file:///d:/Code/tillegal-be/scripts/crawl-daily.ps1) with dynamic T - 1 date calculation, error handling, and Windows Task Scheduler setup instructions.
+  - **Unit Tests:**
+    - Added 5 unit tests in [AiServiceClientTests.cs](file:///d:/Code/tillegal-be/tests/Tillegal.ArchitectureTests/AiServiceClientTests.cs) covering `AiServiceClient` payload/response handling and `DailyCrawlUpdateTask` timezone date math and error propagation.
+- **Changed paths:**
+  - `src/Tillegal.Application/Common/Interfaces/IAiServiceClient.cs`
+  - `src/Tillegal.Infrastructure/Options/AiServiceOptions.cs`
+  - `src/Tillegal.Infrastructure/ExternalServices/Ai/AiServiceClient.cs`
+  - `src/Tillegal.Infrastructure/ExternalServices/Jobs/DailyCrawlUpdateTask.cs`
+  - `src/Tillegal.Infrastructure/DependencyInjection.cs`
+  - `src/Tillegal.AppHost/Configurations/InfrastructureExtensions.cs`
+  - `src/Tillegal.AppHost/appsettings.Example.json`
+  - `src/Tillegal.AppHost/appsettings.Development.json`
+  - `scripts/crawl-daily.ps1`
+  - `tests/Tillegal.ArchitectureTests/AiServiceClientTests.cs`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet build`: Succeeded (0 errors).
+  - `dotnet test tests/Tillegal.ArchitectureTests/Tillegal.ArchitectureTests.csproj`: 31/31 passed.
+  - `dotnet test tests/Tillegal.Application.UnitTests/Tillegal.Application.UnitTests.csproj`: 318/318 passed.
+
+
 
 
 
