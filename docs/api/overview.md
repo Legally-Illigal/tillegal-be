@@ -23,10 +23,20 @@ This document describes the high-level API communication protocol, gateway contr
 - Supports credentials (`AllowCredentials()`) when explicit origins are defined.
 
 ### 3. Rate Limiting
-- Built-in fixed-window rate limiter partitioned by client IP address (`httpContext.Connection.RemoteIpAddress`):
-  - **Permit Limit**: 100 requests.
-  - **Window**: 1 minute.
-  - **Rejection Code**: HTTP 429 (`TooManyRequests`).
+- Distributed fixed-window rate limiter powered by Redis (`RedisRateLimitingMiddleware` via `IRateLimitService` / `UpstashRedisRateLimitService`):
+  - **Global Policy** (applied across all `/api/*` endpoints):
+    - **Permit Limit**: 100 requests per 1-minute window.
+    - **Partition Key**: User ID when authenticated (`global:user:{userId}`), falling back to remote IP address (`global:ip:{clientIp}`).
+  - **Login Policy** (applied strictly to `/api/auth/login` and `/api/auth/login/google`):
+    - **Permit Limit**: 10 requests per 1-minute window.
+    - **Partition Key**: Client IP address (`login:{clientIp}`).
+  - **Headers**:
+    - `X-RateLimit-Limit`: Maximum requests permitted in the window.
+    - `X-RateLimit-Remaining`: Remaining request quota.
+    - `X-RateLimit-Reset`: Unix timestamp when the current window resets.
+    - `Retry-After`: Seconds to wait before retrying (on HTTP 429).
+  - **Rejection Code**: HTTP 429 (`application/problem+json` RFC 7807 `ProblemDetails`).
+  - **Fail-open Resiliency**: If Redis is temporarily unreachable, rate limiter logs a warning and permits requests to avoid cascading outages.
 
 ## Operational Health Endpoints
 

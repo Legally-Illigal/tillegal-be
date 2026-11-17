@@ -13,7 +13,7 @@ The core architectural scaffold and cross-cutting infrastructure are fully imple
 | **Application Foundation** | Complete | MediatR pipeline behaviors (`LoggingBehavior`, `ValidationBehavior`), FluentValidation, Mapster mapper. |
 | **Persistence Layer** | Complete | `AppDbContext` (PostgreSQL via EF Core), `IUnitOfWork`, soft-delete query filter, migration/seeder bootstrapper. |
 | **Infrastructure Adapters**| Complete | REST clients for Upstash Redis, Resend email, Supabase Storage; Quartz background job scheduler; `PasswordHashingService`, `DateTimeProvider`. |
-| **Presentation & API** | Complete | `BaseApiController`, `CorrelationIdMiddleware`, `ExceptionHandlingMiddleware` (RFC 7807), rate limiting (100 req/min/IP), JWT Bearer auth, Swagger UI. |
+| **Presentation & API** | Complete | `BaseApiController`, `CorrelationIdMiddleware`, `ExceptionHandlingMiddleware` (RFC 7807), `RedisRateLimitingMiddleware` (Global & Login limits via Redis), JWT Bearer auth, Swagger UI. |
 | **Health Probes** | Complete | `/healthz` (liveness) and `/readyz` (PostgreSQL readiness). |
 | **Automated Testing** | Complete | Unit tests for domain entities and behaviors; NetArchTest architecture guard tests. |
 

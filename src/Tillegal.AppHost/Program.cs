@@ -13,8 +13,8 @@ app.UseCors(Tillegal.Api.DependencyInjection.DefaultCorsPolicyName);
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
-app.UseRateLimiter();
 app.UseAuthentication();
+app.UseMiddleware<RedisRateLimitingMiddleware>();
 app.UseAuthorization();
 app.UseMiddleware<AuditLogMiddleware>();
 

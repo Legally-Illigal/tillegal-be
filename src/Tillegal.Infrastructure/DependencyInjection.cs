@@ -6,6 +6,7 @@ using Tillegal.Infrastructure.ExternalServices.Auth;
 using Tillegal.Infrastructure.ExternalServices.Cache;
 using Tillegal.Infrastructure.ExternalServices.Jobs;
 using Tillegal.Infrastructure.ExternalServices.Mail;
+using Tillegal.Infrastructure.ExternalServices.RateLimiting;
 using Tillegal.Infrastructure.ExternalServices.Storage;
 using Tillegal.Infrastructure.Logging;
 using Tillegal.Infrastructure.SystemServices;
@@ -25,6 +26,8 @@ public static class DependencyInjection
         services.AddSingleton<CorrelationIdGenerator>();
         services.AddTransient<LoggingHandler>();
         services.AddHttpClient<ICacheService, UpstashRedisCacheService>()
+            .AddHttpMessageHandler<LoggingHandler>();
+        services.AddHttpClient<IRateLimitService, UpstashRedisRateLimitService>()
             .AddHttpMessageHandler<LoggingHandler>();
         services.AddHttpClient<IEmailService, ResendEmailService>()
             .AddHttpMessageHandler<LoggingHandler>();
