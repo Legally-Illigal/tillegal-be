@@ -1428,6 +1428,42 @@ Use this file as a concise handoff record, not as a transcript. Append an entry 
   - `dotnet test tillegal-be.slnx`: 325/325 passed (318 Unit Tests, 7 Architecture Tests).
   - `dotnet format --no-restore --verify-no-changes`: Passed (0 formatting violations).
 
+## 2026-11-17 — Implement Distributed Redis Rate Limiting Middleware (BE-F09 Scope)
+
+- **Status:** Completed and verified.
+- **Context & Requirement:**
+  - Implement Redis middleware for APIs (`/api/*`) covering both global API rate limiting and strict login endpoint protection.
+  - Automatically apply via global middleware in the ASP.NET Core pipeline.
+- **Completed:**
+  - **Application Layer (`Tillegal.Application`):**
+    - Created `IRateLimitService` port in `Tillegal.Application.Common.Interfaces`.
+    - Created `RateLimitCheckResult` record in `Tillegal.Application.Common.Models`.
+  - **Infrastructure Layer (`Tillegal.Infrastructure`):**
+    - Implemented `UpstashRedisRateLimitService` in `Tillegal.Infrastructure.ExternalServices.RateLimiting` using atomic `INCR` and `EXPIRE` commands over Upstash Redis REST API.
+    - Added fail-open resiliency with warning logging to ensure external Redis issues do not bring down the API.
+    - Registered `IRateLimitService` typed `HttpClient` with `LoggingHandler` in `DependencyInjection.cs`.
+  - **API Layer (`Tillegal.Api`):**
+    - Created `RateLimitingOptions` and `RateLimitPolicyOptions` in `Tillegal.Api.Options`.
+    - Created `RedisRateLimitingMiddleware` in `Tillegal.Api.Middlewares`:
+      - Applies globally to all `/api/*` routes, bypassing non-API endpoints (`/healthz`, `/readyz`, `/swagger`) and CORS preflight (`OPTIONS`) requests.
+      - Enforces strict Login rate limit (10 req/min default) on `POST /api/auth/login` and `POST /api/auth/login/google` partitioned by client IP (`login:{clientIp}`).
+      - Enforces Global rate limit (100 req/min default) on all other `/api/*` routes partitioned by authenticated user ID (`global:user:{userId}`) or client IP (`global:ip:{clientIp}`).
+      - Appends standard `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset` headers.
+      - Returns RFC 7807 `ProblemDetails` (`application/problem+json`) with HTTP 429, `Retry-After`, and `X-Correlation-ID` when exceeded.
+    - Bound `RateLimitingOptions` in `DependencyInjection.cs`.
+  - **Host Layer (`Tillegal.AppHost`):**
+    - Replaced in-memory `UseRateLimiter()` with `app.UseMiddleware<RedisRateLimitingMiddleware>()` positioned after `UseAuthentication()` in `Program.cs`.
+    - Configured `RateLimiting` settings in `appsettings.Example.json` and `appsettings.Development.json`.
+  - **Documentation:**
+    - Updated `docs/api/overview.md`, `docs/decisions/0004-api-security-and-error-handling.md`, and `docs/development/status-and-roadmap.md`.
+  - **Tests:**
+    - Added 7 unit tests in `tests/Tillegal.ArchitectureTests/RedisRateLimitingMiddlewareTests.cs`.
+    - Added 7 unit tests in `tests/Tillegal.ArchitectureTests/UpstashRedisRateLimitServiceTests.cs`.
+- **Checks run:**
+  - `dotnet test tests/Tillegal.ArchitectureTests/Tillegal.ArchitectureTests.csproj --no-restore -m:1`: 26/26 passed.
+  - `dotnet test tests/Tillegal.Application.UnitTests/Tillegal.Application.UnitTests.csproj --no-restore -m:1`: 318/318 passed.
+  - `dotnet format --verify-no-changes --no-restore`: Passed (0 formatting violations).
+
 
 
 

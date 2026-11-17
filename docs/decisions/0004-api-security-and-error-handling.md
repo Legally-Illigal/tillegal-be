@@ -23,7 +23,10 @@ A production-ready Web API requires consistent error responses, robust security 
    - Validates symmetric signing key, lifetime, issuer, audience, with 30s clock skew.
    - `ICurrentUserService` / `CurrentUserService` resolves `UserId` and `ClaimsPrincipal` from `IHttpContextAccessor`.
 4. **Rate Limiting & Network Security**:
-   - ASP.NET Core built-in Rate Limiter using a fixed-window partition (100 requests / 1 minute per remote IP; rejects with HTTP 429).
+   - Distributed Redis Rate Limiting Middleware (`RedisRateLimitingMiddleware` via `IRateLimitService`) using fixed-window partitions in Upstash Redis:
+     - Global policy: 100 requests / 1 minute (partitioned by authenticated `UserId` or client IP).
+     - Login policy: 10 requests / 1 minute (partitioned strictly by client IP for `/api/auth/login` and `/api/auth/login/google`).
+     - Returns HTTP 429 RFC 7807 `ProblemDetails` with `Retry-After` and `X-RateLimit-*` headers; fails open on Redis connectivity issues.
    - `ForwardedHeadersOptions` processes `X-Forwarded-For` and `X-Forwarded-Proto` with a configured trusted proxy list (`ReverseProxy:KnownProxies`).
    - CORS policy (`DefaultCorsPolicy`) allows configured origins or defaults to local developer frontends (`:3000`, `:5173`, `:4200`).
 
