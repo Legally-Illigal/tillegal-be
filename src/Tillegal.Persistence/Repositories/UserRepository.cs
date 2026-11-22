@@ -144,6 +144,7 @@ public sealed class UserRepository(AppDbContext dbContext) : IUserRepository
         dataModel.FullName = user.FullName;
         dataModel.PhoneNumber = user.PhoneNumber;
         dataModel.GoogleSubject = user.GoogleSubject;
+        dataModel.PasswordHash = user.PasswordHash;
         dataModel.DeletedAt = user.IsActive ? null : DateTimeOffset.UtcNow;
     }
 

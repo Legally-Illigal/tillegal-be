@@ -80,6 +80,67 @@ public sealed class AiServiceClientTests
         var act = async () => await service.TriggerCrawlAsync(targetDate);
         await act.Should().ThrowAsync<HttpRequestException>();
     }
+
+    [Fact]
+    public async Task ConsultLegalAsync_ShouldSendPostRequestWithCorrectPayload_AndReturnConsultationResult()
+    {
+        // Arrange
+        var handler = new TestHttpMessageHandler
+        {
+            ResponseFactory = _ => new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(
+                    "{\"content\": \"Luật quy định rõ...\", \"citations\": null}",
+                    System.Text.Encoding.UTF8,
+                    "application/json")
+            }
+        };
+        var httpClient = new HttpClient(handler);
+        var options = Microsoft.Extensions.Options.Options.Create(new AiServiceOptions
+        {
+            BaseUrl = "http://127.0.0.1:8000",
+            ConsultationEndpoint = "/consultation"
+        });
+        var service = new AiServiceClient(httpClient, options, NullLogger<AiServiceClient>.Instance);
+
+        // Act
+        var result = await service.ConsultLegalAsync("Quy định thử việc?", "multi_agent");
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Content.Should().Be("Luật quy định rõ...");
+        handler.CapturedRequest.Should().NotBeNull();
+        handler.CapturedRequest!.Method.Should().Be(HttpMethod.Post);
+        handler.CapturedRequest.RequestUri!.ToString().Should().Be("http://127.0.0.1:8000/consultation");
+        handler.CapturedContent.Should().NotBeNullOrWhiteSpace();
+        using var jsonDoc = System.Text.Json.JsonDocument.Parse(handler.CapturedContent!);
+        jsonDoc.RootElement.GetProperty("workflow_mode").GetString().Should().Be("multi_agent");
+        jsonDoc.RootElement.GetProperty("prompt").GetString().Should().Be("Quy định thử việc?");
+    }
+
+    [Fact]
+    public async Task ConsultLegalAsync_WhenApiReturnsError_ShouldReturnFallbackResult()
+    {
+        // Arrange
+        var handler = new TestHttpMessageHandler
+        {
+            ResponseFactory = _ => new HttpResponseMessage(HttpStatusCode.InternalServerError)
+        };
+        var httpClient = new HttpClient(handler);
+        var options = Microsoft.Extensions.Options.Options.Create(new AiServiceOptions
+        {
+            BaseUrl = "http://127.0.0.1:8000"
+        });
+        var service = new AiServiceClient(httpClient, options, NullLogger<AiServiceClient>.Instance);
+
+        // Act
+        var result = await service.ConsultLegalAsync("Quy định hợp đồng?", "single_agent");
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Content.Should().Contain("[Đơn Agent - Tiêu chuẩn]");
+        result.Content.Should().Contain("Quy định hợp đồng?");
+    }
 }
 
 public sealed class DailyCrawlUpdateTaskTests
@@ -104,6 +165,20 @@ public sealed class DailyCrawlUpdateTaskTests
 
             CapturedDate = crawlDate;
             return Task.FromResult(ReturnJobId);
+        }
+
+        public Task<Tillegal.Application.Common.Models.AiConsultationResult> ConsultLegalAsync(
+            string prompt,
+            string workflowMode,
+            IReadOnlyList<Tillegal.Application.Common.Models.ConversationHistoryItem>? history = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (ShouldThrow)
+            {
+                throw new HttpRequestException("Downstream consultation failure");
+            }
+
+            return Task.FromResult(new Tillegal.Application.Common.Models.AiConsultationResult($"Answer for {prompt} in {workflowMode}"));
         }
     }
 
