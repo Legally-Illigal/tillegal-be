@@ -5,6 +5,7 @@ using NSubstitute;
 using Tillegal.Application.Common.Exceptions;
 using Tillegal.Application.Common.Interfaces;
 using Tillegal.Application.Common.Mappings;
+using Tillegal.Application.Common.Models;
 using Tillegal.Application.Features.Messages.Commands.CreateMessage;
 using Tillegal.Application.Features.Messages.Mappings;
 using Tillegal.Domain.Entities;
@@ -18,6 +19,7 @@ public sealed class CreateMessageCommandHandlerTests
     private readonly ICurrentUserService _currentUserService = Substitute.For<ICurrentUserService>();
     private readonly IConversationService _conversationService = Substitute.For<IConversationService>();
     private readonly IConversationMessageService _messageService = Substitute.For<IConversationMessageService>();
+    private readonly IAiServiceClient _aiServiceClient = Substitute.For<IAiServiceClient>();
     private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly IMapper _mapper;
     private readonly CreateMessageCommandHandler _handler;
@@ -31,6 +33,7 @@ public sealed class CreateMessageCommandHandlerTests
             _currentUserService,
             _conversationService,
             _messageService,
+            _aiServiceClient,
             _unitOfWork,
             _mapper);
     }
@@ -110,20 +113,27 @@ public sealed class CreateMessageCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WithValidData_ShouldCreateMessageAndCommit()
+    public async Task Handle_WithUserRole_ShouldCallAiWithSingleAgent_AndReturnAssistantMessage()
     {
         // Arrange
         var userId = Guid.CreateVersion7();
         var conversationId = Guid.CreateVersion7();
         var conversation = Conversation.Create(userId, "My Chat");
-        var created = ConversationMessage.CreateUserMessage(conversationId, "Hello legal AI");
+        var userMsg = ConversationMessage.CreateUserMessage(conversationId, "Hello legal AI");
+        var assistantMsg = ConversationMessage.CreateAssistantMessage(conversationId, "Answer from AI", userMsg.Id);
 
         _currentUserService.UserId.Returns(userId);
         _currentUserService.Role.Returns("User");
         _conversationService.GetConversationByIdAsync(conversationId, Arg.Any<CancellationToken>())
             .Returns(conversation);
         _messageService.CreateMessageAsync(conversationId, "user", "Hello legal AI", null, null, Arg.Any<CancellationToken>())
-            .Returns(created);
+            .Returns(userMsg);
+        _messageService.GetMessagesByConversationIdAsync(conversationId, Arg.Any<CancellationToken>())
+            .Returns(new List<ConversationMessage>());
+        _aiServiceClient.ConsultLegalAsync("Hello legal AI", "single_agent", Arg.Any<IReadOnlyList<ConversationHistoryItem>>(), Arg.Any<CancellationToken>())
+            .Returns(new AiConsultationResult("Answer from AI", null));
+        _messageService.CreateMessageAsync(conversationId, "assistant", "Answer from AI", userMsg.Id, null, Arg.Any<CancellationToken>())
+            .Returns(assistantMsg);
 
         var command = new CreateMessageCommand(conversationId, "user", "Hello legal AI");
 
@@ -132,9 +142,76 @@ public sealed class CreateMessageCommandHandlerTests
 
         // Assert
         result.Should().NotBeNull();
-        result.Role.Should().Be("user");
-        result.Content.Should().Be("Hello legal AI");
+        result.Role.Should().Be("assistant");
+        result.Content.Should().Be("Answer from AI");
         result.ConversationId.Should().Be(conversationId);
+        result.ParentMessageId.Should().Be(userMsg.Id);
+        await _aiServiceClient.Received(1).ConsultLegalAsync("Hello legal AI", "single_agent", Arg.Any<IReadOnlyList<ConversationHistoryItem>>(), Arg.Any<CancellationToken>());
+        await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_WithLawyerRole_ShouldCallAiWithMultiAgent_AndReturnAssistantMessage()
+    {
+        // Arrange
+        var userId = Guid.CreateVersion7();
+        var conversationId = Guid.CreateVersion7();
+        var conversation = Conversation.Create(userId, "Lawyer Case Analysis");
+        var userMsg = ConversationMessage.CreateUserMessage(conversationId, "Phân tích điều khoản tranh chấp");
+        var assistantMsg = ConversationMessage.CreateAssistantMessage(conversationId, "Tổng hợp ý kiến các chuyên gia pháp lý...", userMsg.Id);
+
+        _currentUserService.UserId.Returns(userId);
+        _currentUserService.Role.Returns("Lawyer");
+        _conversationService.GetConversationByIdAsync(conversationId, Arg.Any<CancellationToken>())
+            .Returns(conversation);
+        _messageService.CreateMessageAsync(conversationId, "user", "Phân tích điều khoản tranh chấp", null, null, Arg.Any<CancellationToken>())
+            .Returns(userMsg);
+        _messageService.GetMessagesByConversationIdAsync(conversationId, Arg.Any<CancellationToken>())
+            .Returns(new List<ConversationMessage>());
+        _aiServiceClient.ConsultLegalAsync("Phân tích điều khoản tranh chấp", "multi_agent", Arg.Any<IReadOnlyList<ConversationHistoryItem>>(), Arg.Any<CancellationToken>())
+            .Returns(new AiConsultationResult("Tổng hợp ý kiến các chuyên gia pháp lý...", null));
+        _messageService.CreateMessageAsync(conversationId, "assistant", "Tổng hợp ý kiến các chuyên gia pháp lý...", userMsg.Id, null, Arg.Any<CancellationToken>())
+            .Returns(assistantMsg);
+
+        var command = new CreateMessageCommand(conversationId, "user", "Phân tích điều khoản tranh chấp");
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Role.Should().Be("assistant");
+        result.Content.Should().Be("Tổng hợp ý kiến các chuyên gia pháp lý...");
+        await _aiServiceClient.Received(1).ConsultLegalAsync("Phân tích điều khoản tranh chấp", "multi_agent", Arg.Any<IReadOnlyList<ConversationHistoryItem>>(), Arg.Any<CancellationToken>());
+        await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_WithAssistantRole_ShouldCreateDirectly_WithoutCallingAi()
+    {
+        // Arrange
+        var userId = Guid.CreateVersion7();
+        var conversationId = Guid.CreateVersion7();
+        var conversation = Conversation.Create(userId, "Direct Chat");
+        var assistantMsg = ConversationMessage.CreateAssistantMessage(conversationId, "Direct assistant message", null);
+
+        _currentUserService.UserId.Returns(userId);
+        _currentUserService.Role.Returns("User");
+        _conversationService.GetConversationByIdAsync(conversationId, Arg.Any<CancellationToken>())
+            .Returns(conversation);
+        _messageService.CreateMessageAsync(conversationId, "assistant", "Direct assistant message", null, null, Arg.Any<CancellationToken>())
+            .Returns(assistantMsg);
+
+        var command = new CreateMessageCommand(conversationId, "assistant", "Direct assistant message");
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.Should().NotBeNull();
+        result.Role.Should().Be("assistant");
+        result.Content.Should().Be("Direct assistant message");
+        await _aiServiceClient.DidNotReceiveWithAnyArgs().ConsultLegalAsync(default!, default!, default!, default);
         await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
@@ -147,7 +224,7 @@ public sealed class CreateMessageCommandHandlerTests
         var parentId = Guid.CreateVersion7();
         var conversation = Conversation.Create(userId, "My Chat");
         var parentMessage = ConversationMessage.CreateUserMessage(conversationId, "Parent question");
-        var created = ConversationMessage.Create(conversationId, "user", "Child branch question", parentId);
+        var created = ConversationMessage.Create(conversationId, "assistant", "Child branch assistant reply", parentId);
 
         _currentUserService.UserId.Returns(userId);
         _currentUserService.Role.Returns("User");
@@ -155,10 +232,10 @@ public sealed class CreateMessageCommandHandlerTests
             .Returns(conversation);
         _messageService.GetMessageByIdAsync(parentId, Arg.Any<CancellationToken>())
             .Returns(parentMessage);
-        _messageService.CreateMessageAsync(conversationId, "user", "Child branch question", parentId, null, Arg.Any<CancellationToken>())
+        _messageService.CreateMessageAsync(conversationId, "assistant", "Child branch assistant reply", parentId, null, Arg.Any<CancellationToken>())
             .Returns(created);
 
-        var command = new CreateMessageCommand(conversationId, "user", "Child branch question", parentId);
+        var command = new CreateMessageCommand(conversationId, "assistant", "Child branch assistant reply", parentId);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);

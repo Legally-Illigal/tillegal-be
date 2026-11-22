@@ -1500,8 +1500,102 @@ Use this file as a concise handoff record, not as a transcript. Append an entry 
   - `dotnet test tests/Tillegal.ArchitectureTests/Tillegal.ArchitectureTests.csproj`: 31/31 passed.
   - `dotnet test tests/Tillegal.Application.UnitTests/Tillegal.Application.UnitTests.csproj`: 318/318 passed.
 
+## 2026-11-18 — Implement User API Baseline (Profile, Update, Password, Deactivate)
 
+- **Status:** Completed.
+- **Reason:** Implement baseline endpoints for authenticated users to manage their account (retrieve profile, update full name / phone number, change password, and self-deactivate account). Replace legacy `GET /api/auth/me` with `GET /api/users/me`.
+- **Completed:**
+  - **Application Layer (`Tillegal.Application`):**
+    - Created `UserProfileDto` model in `src/Tillegal.Application/Features/Users/Models/UserProfileDto.cs`.
+    - Implemented `GetMyProfileQuery` and `GetMyProfileQueryHandler` in `src/Tillegal.Application/Features/Users/Queries/GetMyProfile/`.
+    - Implemented `UpdateMyProfileCommand`, `UpdateMyProfileCommandHandler`, and `UpdateMyProfileCommandValidator` in `src/Tillegal.Application/Features/Users/Commands/UpdateMyProfile/`.
+    - Implemented `ChangeMyPasswordCommand`, `ChangeMyPasswordCommandHandler`, and `ChangeMyPasswordCommandValidator` in `src/Tillegal.Application/Features/Users/Commands/ChangeMyPassword/`.
+    - Implemented `DeactivateMyAccountCommand` and `DeactivateMyAccountCommandHandler` with admin lockout guard in `src/Tillegal.Application/Features/Users/Commands/DeactivateMyAccount/`.
+    - Configured Mapster mapping in `src/Tillegal.Application/Features/Users/Mappings/UserMappingConfig.cs`.
+    - Removed obsolete `GetCurrentUser` query, handler, and DTO from Auth features.
+  - **Persistence Layer (`Tillegal.Persistence`):**
+    - Updated `UserRepository.UpdateAsync` to persist `PasswordHash` changes to `UserDataModel`.
+  - **API Layer (`Tillegal.Api`):**
+    - Created `UsersController` under `src/Tillegal.Api/Controllers/UsersController.cs` providing:
+      - `GET /api/users/me`: Returns profile of the authenticated user.
+      - `PUT /api/users/me`: Updates full name and phone number.
+      - `PUT /api/users/me/password`: Updates password (hashes via `IPasswordHashingService`).
+      - `DELETE /api/users/me`: Deactivates user account and clears `access_token` cookie.
+    - Created API contracts in `src/Tillegal.Api/Contracts/Users/UserContracts.cs`.
+    - Added API mappings in `src/Tillegal.Api/Mappings/UserApiMappingConfig.cs`.
+    - Removed legacy `GET /api/auth/me` endpoint from `AuthController.cs` and cleaned up `AuthApiMappingConfig.cs`.
+  - **Unit Tests (`Tillegal.Application.UnitTests`):**
+    - Added comprehensive unit tests for all queries, commands, validators, and mappings:
+      - `GetMyProfileQueryHandlerTests.cs`
+      - `UpdateMyProfileCommandHandlerTests.cs`
+      - `UpdateMyProfileCommandValidatorTests.cs`
+      - `ChangeMyPasswordCommandHandlerTests.cs`
+      - `ChangeMyPasswordCommandValidatorTests.cs`
+      - `DeactivateMyAccountCommandHandlerTests.cs`
+      - `UserMappingTests.cs`
+- **Changed paths:**
+  - `src/Tillegal.Application/Features/Users/Models/UserProfileDto.cs`
+  - `src/Tillegal.Application/Features/Users/Queries/GetMyProfile/GetMyProfileQuery.cs`
+  - `src/Tillegal.Application/Features/Users/Queries/GetMyProfile/GetMyProfileQueryHandler.cs`
+  - `src/Tillegal.Application/Features/Users/Commands/UpdateMyProfile/UpdateMyProfileCommand.cs`
+  - `src/Tillegal.Application/Features/Users/Commands/UpdateMyProfile/UpdateMyProfileCommandHandler.cs`
+  - `src/Tillegal.Application/Features/Users/Commands/UpdateMyProfile/UpdateMyProfileCommandValidator.cs`
+  - `src/Tillegal.Application/Features/Users/Commands/ChangeMyPassword/ChangeMyPasswordCommand.cs`
+  - `src/Tillegal.Application/Features/Users/Commands/ChangeMyPassword/ChangeMyPasswordCommandHandler.cs`
+  - `src/Tillegal.Application/Features/Users/Commands/ChangeMyPassword/ChangeMyPasswordCommandValidator.cs`
+  - `src/Tillegal.Application/Features/Users/Commands/DeactivateMyAccount/DeactivateMyAccountCommand.cs`
+  - `src/Tillegal.Application/Features/Users/Commands/DeactivateMyAccount/DeactivateMyAccountCommandHandler.cs`
+  - `src/Tillegal.Application/Features/Users/Mappings/UserMappingConfig.cs`
+  - `src/Tillegal.Persistence/Repositories/UserRepository.cs`
+  - `src/Tillegal.Api/Contracts/Users/UserContracts.cs`
+  - `src/Tillegal.Api/Controllers/UsersController.cs`
+  - `src/Tillegal.Api/Controllers/AuthController.cs`
+  - `src/Tillegal.Api/Mappings/UserApiMappingConfig.cs`
+  - `src/Tillegal.Api/Mappings/AuthApiMappingConfig.cs`
+  - `src/Tillegal.Application/Features/Auth/Mappings/AuthMappingConfig.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Users/GetMyProfileQueryHandlerTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Users/UpdateMyProfileCommandHandlerTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Users/UpdateMyProfileCommandValidatorTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Users/ChangeMyPasswordCommandHandlerTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Users/ChangeMyPasswordCommandValidatorTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Users/DeactivateMyAccountCommandHandlerTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Users/UserMappingTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Auth/AuthMappingTests.cs`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet build`: Succeeded (0 errors).
+  - `dotnet test tests/Tillegal.ArchitectureTests/Tillegal.ArchitectureTests.csproj`: 31/31 passed.
+  - `dotnet test tests/Tillegal.Application.UnitTests/Tillegal.Application.UnitTests.csproj`: 357/357 passed.
 
+## 2026-11-20 — Implement Role-Based AI Consultation (Single-Agent vs Multi-Agent for Lawyers)
 
-
+- **Status:** Completed.
+- **Reason:** Enable automatic server-side AI consultation workflow selection based on user role: regular users receive standard single-agent consultation (`workflow_mode: "single_agent"`), whereas lawyers (`Lawyer`/`Lawer`) and admins receive deep multi-perspective multi-agent consultation (`workflow_mode: "multi_agent"`). AI Service synthesizes responses into a single consolidated assistant message with citations.
+- **Completed:**
+  - **Application Layer (`Tillegal.Application`):**
+    - Added `AiConsultationResult` and `ConversationHistoryItem` models under `src/Tillegal.Application/Common/Models/`.
+    - Extended `IAiServiceClient` in `src/Tillegal.Application/Common/Interfaces/IAiServiceClient.cs` with `ConsultLegalAsync(string prompt, string workflowMode, IReadOnlyList<ConversationHistoryItem>? history, CancellationToken cancellationToken)`.
+    - Updated `CreateMessageCommandHandler` to automatically invoke `ConsultLegalAsync` when a user message is posted (`role == "user"`), saving both user message and assistant reply with parent linkage (`ParentMessageId = userMessage.Id`) and returning the assistant response.
+  - **Infrastructure Layer (`Tillegal.Infrastructure`):**
+    - Updated `AiServiceOptions` with `ConsultationEndpoint`, `DefaultWorkflowMode`, and `LawyerWorkflowMode`.
+    - Implemented `ConsultLegalAsync` in `AiServiceClient` dispatching requests to AI Service with payload containing `prompt`, `workflow_mode`, and conversation history, with a graceful fallback for local development when AI Service is not yet available.
+  - **AppHost Layer (`Tillegal.AppHost`):**
+    - Updated `appsettings.Example.json` with `AiService` options.
+  - **Automated Tests:**
+    - Updated `AiServiceClientTests.cs` and `FakeAiServiceClient` with tests for `ConsultLegalAsync` (happy path with JSON payload assertion and error fallback).
+    - Updated `CreateMessageCommandHandlerTests.cs` covering single-agent dispatch for regular users, multi-agent dispatch for lawyers, and direct pass-through for assistant/system messages.
+- **Changed paths:**
+  - `src/Tillegal.Application/Common/Models/AiConsultationResult.cs`
+  - `src/Tillegal.Application/Common/Models/ConversationHistoryItem.cs`
+  - `src/Tillegal.Application/Common/Interfaces/IAiServiceClient.cs`
+  - `src/Tillegal.Application/Features/Messages/Commands/CreateMessage/CreateMessageCommandHandler.cs`
+  - `src/Tillegal.Infrastructure/Options/AiServiceOptions.cs`
+  - `src/Tillegal.Infrastructure/ExternalServices/Ai/AiServiceClient.cs`
+  - `src/Tillegal.AppHost/appsettings.Example.json`
+  - `tests/Tillegal.ArchitectureTests/AiServiceClientTests.cs`
+  - `tests/Tillegal.Application.UnitTests/Features/Messages/CreateMessageCommandHandlerTests.cs`
+  - `docs/development/agent-worklog.md`
+- **Checks run:**
+  - `dotnet build`: Succeeded (0 errors, 2 expected NuGet audit warnings).
+  - `dotnet test`: 359/359 unit tests passed, 33/33 architecture tests passed.
 

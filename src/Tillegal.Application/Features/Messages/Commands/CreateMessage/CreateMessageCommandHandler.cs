@@ -2,6 +2,7 @@ using MapsterMapper;
 using MediatR;
 using Tillegal.Application.Common.Exceptions;
 using Tillegal.Application.Common.Interfaces;
+using Tillegal.Application.Common.Models;
 using Tillegal.Application.Features.Messages.Models;
 using Tillegal.Domain.Interfaces.Services;
 
@@ -11,6 +12,7 @@ public sealed class CreateMessageCommandHandler(
     ICurrentUserService currentUserService,
     IConversationService conversationService,
     IConversationMessageService messageService,
+    IAiServiceClient aiServiceClient,
     IUnitOfWork unitOfWork,
     IMapper mapper) : IRequestHandler<CreateMessageCommand, MessageDto>
 {
@@ -53,7 +55,23 @@ public sealed class CreateMessageCommandHandler(
             }
         }
 
-        var message = await messageService.CreateMessageAsync(
+        var isUserMessage = string.Equals(request.Role, "user", StringComparison.OrdinalIgnoreCase);
+        if (!isUserMessage)
+        {
+            var singleMessage = await messageService.CreateMessageAsync(
+                request.ConversationId,
+                request.Role,
+                request.Content,
+                request.ParentMessageId,
+                request.Citations,
+                cancellationToken);
+
+            await unitOfWork.SaveChangesAsync(cancellationToken);
+
+            return mapper.Map<MessageDto>(singleMessage);
+        }
+
+        var userMessage = await messageService.CreateMessageAsync(
             request.ConversationId,
             request.Role,
             request.Content,
@@ -61,8 +79,35 @@ public sealed class CreateMessageCommandHandler(
             request.Citations,
             cancellationToken);
 
+        var isLawyer = string.Equals(currentUserService.Role, "Lawyer", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(currentUserService.Role, "Lawer", StringComparison.OrdinalIgnoreCase);
+        var workflowMode = isLawyer ? "multi_agent" : "single_agent";
+
+        var previousMessages = await messageService.GetMessagesByConversationIdAsync(
+            request.ConversationId,
+            cancellationToken);
+
+        var history = previousMessages
+            .TakeLast(10)
+            .Select(m => new ConversationHistoryItem(m.Role, m.Content))
+            .ToList();
+
+        var aiResult = await aiServiceClient.ConsultLegalAsync(
+            request.Content,
+            workflowMode,
+            history,
+            cancellationToken);
+
+        var assistantMessage = await messageService.CreateMessageAsync(
+            request.ConversationId,
+            "assistant",
+            aiResult.Content,
+            userMessage.Id,
+            aiResult.Citations,
+            cancellationToken);
+
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return mapper.Map<MessageDto>(message);
+        return mapper.Map<MessageDto>(assistantMessage);
     }
 }

@@ -2,16 +2,17 @@ using MapsterMapper;
 using MediatR;
 using Tillegal.Application.Common.Exceptions;
 using Tillegal.Application.Common.Interfaces;
+using Tillegal.Application.Features.Users.Models;
 using Tillegal.Domain.Interfaces.Repositories;
 
-namespace Tillegal.Application.Features.Auth.Queries.GetCurrentUser;
+namespace Tillegal.Application.Features.Users.Queries.GetMyProfile;
 
-public sealed class GetCurrentUserQueryHandler(
+public sealed class GetMyProfileQueryHandler(
     ICurrentUserService currentUserService,
     IUserRepository userRepository,
-    IMapper mapper) : IRequestHandler<GetCurrentUserQuery, CurrentUserDto>
+    IMapper mapper) : IRequestHandler<GetMyProfileQuery, UserProfileDto>
 {
-    public async Task<CurrentUserDto> Handle(GetCurrentUserQuery request, CancellationToken cancellationToken)
+    public async Task<UserProfileDto> Handle(GetMyProfileQuery request, CancellationToken cancellationToken)
     {
         if (!currentUserService.IsAuthenticated)
         {
@@ -32,7 +33,6 @@ public sealed class GetCurrentUserQueryHandler(
             throw new UnauthorizedException("User account has been deactivated.");
         }
 
-        return mapper.Map<CurrentUserDto>(user);
+        return mapper.Map<UserProfileDto>(user);
     }
 }
-

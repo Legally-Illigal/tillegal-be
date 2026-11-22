@@ -10,7 +10,6 @@ using Tillegal.Application.Features.Auth.Commands.LoginWithGoogle;
 using Tillegal.Application.Features.Auth.Commands.RegisterWithGoogle;
 using Tillegal.Application.Features.Auth.Commands.ResendOtp;
 using Tillegal.Application.Features.Auth.Commands.VerifyRegistration;
-using Tillegal.Application.Features.Auth.Queries.GetCurrentUser;
 
 namespace Tillegal.Api.Controllers;
 
@@ -127,20 +126,6 @@ public sealed class AuthController(ISender mediator, IMapper mapper) : BaseApiCo
         });
 
         return Ok(new LogoutApiResponse());
-    }
-
-    [Authorize]
-    [HttpGet("me")]
-    [ProducesResponseType(typeof(CurrentUserApiResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetCurrentUser(CancellationToken cancellationToken)
-    {
-        var query = new GetCurrentUserQuery();
-        var result = await Mediator.Send(query, cancellationToken);
-        var response = Mapper.Map<CurrentUserApiResponse>(result);
-
-        return Ok(response);
     }
 
     private void SetAccessTokenCookie(string accessToken, DateTimeOffset expiresAt)
